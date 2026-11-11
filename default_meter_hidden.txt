@@ -1,0 +1,20 @@
+1920x1080-balbuze/fluo-blue-linear
+1920x1080-balbuze/fluo-green-linear
+1920x720-balbuze/blue-circ
+1920x720-balbuze/orange-circ
+1920x720-balbuze/green-circ
+1920x515-Gelo5-BASIC_921/02G5_Naim ONLY
+1920x480-Gelo5-BASIC_521/07G5_Naim ONLY
+1920x515-Gelo5-BASIC_921/06G5_NAD only meters
+1920x480-Gelo5-BASIC_521/19G5_NAD only
+1920x515-Gelo5-BASIC_921/20G5_McIntosh BC
+1920x480-Gelo5-BASIC_521/04G5_McIntosh BC
+1920x515-Gelo5-BASIC_921/10G5_Dark Spot Only
+1920x480-Gelo5-BASIC_521/20G5_DarkSpot_only
+1920x515-Gelo5-BASIC_921/09G5_Kenwood Rev ONLY
+1920x480-Gelo5-BASIC_521/05G5_Kenwood Rev ONLY
+1920x480-Gelo5-BASIC_521/01G5_Free BC
+1920x480-Gelo5-BASIC_521/03G5_BlackBlur BC
+1920x480-Gelo5-BASIC_521/17G5_Luxman_only
+1920x480-Gelo5-BASIC_521/18G5_Hitachi7500_only
+1920x480-Gelo5-BASIC_521/06G5_Namson Only

@@ -1,0 +1,41 @@
+# Roon PeppyMeter Frame - settings
+#
+# install.sh copies this file to settings.conf, which is the one to edit.
+# After a change, restart the part concerned:
+#   [roon]     sudo systemctl restart rpf-roon
+#   [audio]    sudo systemctl restart rpf-audio
+#   [display]  sudo systemctl restart rpf-display
+
+[roon]
+# The Roon zone to follow, exactly as Roon shows it (e.g. Living Room).
+# If empty or misspelt, the log lists the zones Roon can see:
+#   journalctl -u rpf-roon -n 20 --no-pager
+zone =
+
+# Leave empty to find the Roon Core automatically.
+# Set it (e.g. 192.168.1.20) if discovery doesn't work on your network.
+core_ip =
+# Only used together with core_ip. 9330 is the usual Roon Core port.
+core_port = 9330
+
+# The name shown in Roon > Settings > Extensions
+extension_name = Frame Display Bridge
+
+[audio]
+# ALSA capture device for the meter signal. install.sh fills this in when there is
+# exactly one capture device. List them with:  arecord -l
+# Then use the card name, e.g.  plughw:CARD=CODEC,DEV=0
+device =
+rate = 44100
+# Peak readings sent to PeppyMeter per second. Leave at 120 unless you know why:
+# it must stay above PeppyMeter's 60 polls/s and well below what its pipe reader drains.
+updates_per_sec = 120
+
+[display]
+# Screen size. 1920x1080 suits the skins and keeps a Pi 4 comfortable.
+width = 1920
+height = 1080
+# Font for the now-playing text
+font = /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+# Darkness of 'meter strip dim', 0-255. Higher is darker.
+dim_level = 150

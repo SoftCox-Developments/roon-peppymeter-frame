@@ -1,0 +1,198 @@
+#!/bin/bash
+# meter - choose and adjust the PeppyMeter skin on the Roon PeppyMeter Frame display
+#
+# Copyright (C) 2026 Andrew Cox (SoftCox Developments)
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# install.sh copies this to /usr/local/bin/meter and fills in the install folder below.
+
+P="@RPF_DIR@"
+CONF="$P/PeppyMeter/config.txt"
+FOLDERS="$P/meter_folders.txt"
+HIDE="$P/meter_hidden.txt"
+SLIDE="$P/meter_slideshow.conf"
+STRIPF="$P/meter_strip.txt"
+JSON=/dev/shm/roon-peppymeter-frame/now_playing.json
+touch "$HIDE" "$STRIPF"
+
+show_help() {
+    cat <<'HELPEOF'
+Usage: meter [COMMAND] [ARG]
+Show or change the PeppyMeter skin on the display.
+
+Commands:
+  (none)            List visible skins, numbered; * marks the current one
+  N                 Switch to skin number N (numbers from 'meter')
+  FOLDER/NAME       Switch by full name, e.g. 1920x720-Gelo5-BASIC_721/09G5_Free
+  next, prev        Switch to the next/previous skin, then show the list
+  random            Switch to a random skin, then show the list
+  hide [N]          Hide skin N (default: the skin on screen now)
+  unhide [N]        List hidden skins, or unhide hidden skin number N
+  slideshow MIN     Random skin every MIN minutes while Roon is playing
+                    (keeps running after a reboot)
+  slideshow off     Stop the slideshow
+  slideshow         Show whether the slideshow is running
+  shift [PIXELS]    Show, or set, the vertical offset of the current skin
+                    (negative moves it up, e.g. shift -250; restarts display)
+  strip [MODE]      Show, or set, the strip background for the current skin:
+                    clear (skin shows through), dim, or black; restarts display
+  -h, --help, help  Show this help
+
+Notes:
+  Each switch restarts the display, so the screen blanks for a second or two.
+  Hiding renumbers the list: run 'meter' again before hiding another by number.
+  Hidden skins can still be chosen by full name. Names with spaces work with or
+  without quotes. 'shift' and 'strip' are remembered for each skin.
+
+Files (in the install folder):
+  meter_folders.txt     skin folders to include (inside skins/)
+  meter_hidden.txt      hidden skins, one FOLDER/NAME per line
+  meter_slideshow.conf  slideshow interval in minutes
+  meter_strip.txt       per-skin strip background (dim or black)
+HELPEOF
+}
+
+case "$1" in
+    -h|--help|help) show_help; exit 0 ;;
+    -*) echo "meter: unknown option '$1'"; echo "Try 'meter --help'."; exit 1 ;;
+esac
+
+SKINS=$(sed -n 's/^base\.folder *= *//p' "$CONF" | tr -d '\r')
+[ -n "$SKINS" ] || SKINS="$P/skins"
+
+load() {
+    all=(); skins=(); hidden=()
+    while IFS= read -r f; do
+        f=${f%$'\r'}
+        [ -z "$f" ] && continue
+        if [ ! -f "$SKINS/$f/meters.txt" ]; then echo "Warning: no meters.txt in $SKINS/$f" >&2; continue; fi
+        while IFS= read -r s; do
+            all+=("$f/$s")
+        done < <(tr -d '\r' < "$SKINS/$f/meters.txt" | sed -n 's/^\[\(.*\)\][[:space:]]*$/\1/p')
+    done < "$FOLDERS"
+    for s in "${all[@]}"; do
+        if grep -qxF -- "$s" "$HIDE"; then hidden+=("$s"); else skins+=("$s"); fi
+    done
+    n=${#skins[@]}
+    current="$(sed -n 's/^meter\.folder *= *//p' "$CONF" | tr -d '\r')/$(sed -n 's/^meter *= *//p' "$CONF" | tr -d '\r')"
+    idx=-1
+    for i in "${!skins[@]}"; do [ "${skins[$i]}" = "$current" ] && idx=$i; done
+}
+
+show_list() {
+    for i in "${!skins[@]}"; do
+        mark=" "; [ $i -eq $idx ] && mark="*"
+        printf '%s %3d  %s\n' "$mark" $((i + 1)) "${skins[$i]}"
+    done
+    [ ${#hidden[@]} -gt 0 ] && echo "       (${#hidden[@]} hidden - 'meter unhide' lists them)"
+    [ $idx -lt 0 ] && echo "       Current: $current (hidden)"
+    systemctl is-active --quiet rpf-slideshow && echo "       Slideshow: every $(cat "$SLIDE") min while playing"
+    return 0
+}
+
+apply() {
+    local folder="${1%%/*}" name="${1#*/}"
+    sed -i "s|^meter *=.*|meter = $name|; s|^meter\.folder *=.*|meter.folder = $folder|" "$CONF"
+    sudo systemctl restart rpf-display
+}
+
+pick_random() {
+    local r=$idx
+    if [ $n -le 1 ]; then r=0; else while [ $r -eq $idx ]; do r=$((RANDOM % n)); done; fi
+    echo "${skins[$r]}"
+}
+
+load
+case "$1" in
+    "")
+        show_list ;;
+    next)
+        apply "${skins[$(( (idx + 1) % n ))]}"; load; show_list ;;
+    prev)
+        [ $idx -lt 0 ] && idx=0
+        apply "${skins[$(( (idx - 1 + n) % n ))]}"; load; show_list ;;
+    random)
+        apply "$(pick_random)"; load; show_list ;;
+    hide)
+        if [ -n "$2" ]; then
+            if ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt 1 ] || [ "$2" -gt $n ]; then echo "No skin number $2 (1-$n)."; exit 1; fi
+            t="${skins[$(( $2 - 1 ))]}"
+        else
+            t="$current"
+        fi
+        if grep -qxF -- "$t" "$HIDE"; then echo "Already hidden: $t"; exit 0; fi
+        echo "$t" >> "$HIDE"
+        echo "Hidden: $t  (numbers have changed - run 'meter' to see the new list)" ;;
+    unhide)
+        if [ -z "$2" ]; then
+            [ ${#hidden[@]} -eq 0 ] && echo "Nothing hidden."
+            for i in "${!hidden[@]}"; do printf '  %3d  %s\n' $((i + 1)) "${hidden[$i]}"; done
+        else
+            if ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt 1 ] || [ "$2" -gt ${#hidden[@]} ]; then echo "No hidden skin number $2 (see 'meter unhide')."; exit 1; fi
+            t="${hidden[$(( $2 - 1 ))]}"
+            grep -vxF -- "$t" "$HIDE" > "$HIDE.tmp"; mv "$HIDE.tmp" "$HIDE"
+            echo "Unhidden: $t"
+        fi ;;
+    slideshow)
+        case "$2" in
+            "")
+                if systemctl is-active --quiet rpf-slideshow; then echo "Slideshow on: random skin every $(cat "$SLIDE") min while playing"
+                else echo "Slideshow off"; fi ;;
+            off)
+                sudo systemctl disable --now rpf-slideshow 2>/dev/null; echo "Slideshow off" ;;
+            *)
+                if ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt 1 ]; then echo "Usage: meter slideshow MINUTES | off"; exit 1; fi
+                echo "$2" > "$SLIDE"
+                sudo systemctl enable --now rpf-slideshow 2>/dev/null
+                sudo systemctl restart rpf-slideshow
+                echo "Slideshow on: random skin every $2 min while playing" ;;
+        esac ;;
+    shift)
+        folder="${current%%/*}"; name="${current#*/}"
+        mt="$SKINS/$folder/meters.txt"
+        now=$(tr -d '\r' < "$mt" | awk -v sec="[$name]" '
+            /^\[/ { h = $0; sub(/[ \t]+$/, "", h); s = (h == sec); next }
+            s && /^meter\.y *=/ { sub(/^meter\.y *= */, ""); print; exit }')
+        if [ -z "$2" ]; then echo "$current: meter.y = ${now:-0}"; exit 0; fi
+        if ! [[ "$2" =~ ^-?[0-9]+$ ]]; then echo "Usage: meter shift PIXELS  (negative moves the skin up, e.g. -250)"; exit 1; fi
+        [ -f "$mt.orig" ] || cp "$mt" "$mt.orig"
+        tr -d '\r' < "$mt" | awk -v sec="[$name]" -v val="$2" '
+            /^\[/ { h = $0; sub(/[ \t]+$/, "", h); s = (h == sec); print; if (s) print "meter.y = " val; next }
+            s && /^meter\.y *=/ { next }
+            { print }' > "$mt.tmp" && mv "$mt.tmp" "$mt"
+        sudo systemctl restart rpf-display
+        echo "$current: meter.y = $2 (was ${now:-0})" ;;
+    strip)
+        now=$(awk -F'\t' -v k="$current" '$1 == k { print $2 }' "$STRIPF")
+        if [ -z "$2" ]; then echo "$current: strip = ${now:-clear}"; exit 0; fi
+        case "$2" in clear|dim|black) ;; *) echo "Usage: meter strip [clear|dim|black]"; exit 1 ;; esac
+        awk -F'\t' -v k="$current" '$1 != k' "$STRIPF" > "$STRIPF.tmp"
+        if [ "$2" != "clear" ]; then printf '%s\t%s\n' "$current" "$2" >> "$STRIPF.tmp"; fi
+        mv "$STRIPF.tmp" "$STRIPF"
+        sudo systemctl restart rpf-display
+        echo "$current: strip = $2 (was ${now:-clear})" ;;
+    _loop)
+        while true; do
+            mins=$(cat "$SLIDE" 2>/dev/null)
+            [[ "$mins" =~ ^[0-9]+$ ]] && [ "$mins" -ge 1 ] || mins=10
+            sleep $((mins * 60))
+            if grep -q '"state": "playing"' "$JSON" 2>/dev/null; then
+                load
+                t=$(pick_random)
+                apply "$t"
+                echo "Slideshow: $t"
+            fi
+        done ;;
+    *)
+        want="$*"
+        if [[ "$want" =~ ^[0-9]+$ ]]; then
+            if [ "$want" -lt 1 ] || [ "$want" -gt $n ]; then echo "No skin number $want (1-$n)."; exit 1; fi
+            t="${skins[$((want - 1))]}"
+        else
+            t=""
+            for s in "${all[@]}"; do [ "$s" = "$want" ] && t="$s"; done
+            [ -n "$t" ] || { echo "No skin called '$want'. Run 'meter' to list them."; exit 1; }
+        fi
+        apply "$t"
+        echo "Now showing: $t" ;;
+esac
