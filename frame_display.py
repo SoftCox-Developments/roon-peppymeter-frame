@@ -29,6 +29,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import rpf_settings
 
 S = rpf_settings.load()
+# The Pi's GPU speaks OpenGL ES. Without this SDL may pick desktop OpenGL, which isn't
+# installed on Raspberry Pi OS Lite, and every frame is silently dropped (black screen).
+os.environ.setdefault("SDL_RENDER_DRIVER", "opengles2")
 os.chdir(rpf_settings.PEPPY_DIR)
 sys.path.insert(0, rpf_settings.PEPPY_DIR)
 

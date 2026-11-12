@@ -71,9 +71,9 @@ bash install.sh
 The installer takes a few minutes the first time. It:
 
 1. Offers to stop any existing `peppymeter` service, so two copies don't fight over the screen.
-2. Installs the system packages it needs (Python tools, ALSA, the DejaVu font).
+2. Installs the system packages it needs: Python tools, ALSA, the DejaVu font, Debian's pygame and the Pi's graphics libraries.
 3. Downloads [PeppyMeter](https://github.com/project-owner/PeppyMeter) and the [skin collection](https://github.com/balbuze/Meter-peppymeter) from their own GitHub pages. Neither is included in this project.
-4. Sets up a private Python environment in `venv/`.
+4. Sets up a private Python environment in `venv/`. If the connection is patchy you may see orange "Retrying" warnings here; they mean a download was interrupted and is being tried again, so let it carry on.
 5. Creates `settings.conf`, and fills in your capture device if it finds exactly one.
 6. Points PeppyMeter at the skins, the screen size and the audio pipe (keeping a copy of its original `config.txt`).
 7. Installs the `meter` command and the services, and a sudoers rule that lets `meter` restart the display without a password.
@@ -178,6 +178,7 @@ A few things worth knowing if you build on this:
 - **PeppyMeter's pipe reader has a speed limit.** It reads one record, pauses for a tenth of its polling interval, and repeats until the pipe is empty. Feed it much faster than it can drain (a few hundred records a second at 60 fps) and it never gets to the end, so the needles freeze. Feed it slower than it polls and it reads an empty pipe as silence, so the needles dip. `audio_bridge.py` sends 120 peak readings a second for PeppyMeter's 60 polls.
 - **PeppyMeter takes the screen size from the skin folder's name**, so a `1920x720-...` folder would otherwise open a 1920x720 screen. This project sets the size from `settings.conf` instead.
 - **Pasting multi-line commands into an SSH window** can go wrong when `sudo` stops to ask for a password: the next pasted lines get swallowed. Run `sudo -v` on its own first, or wrap blocks in `{ ... }`.
+- **Use Debian's pygame on a headless Pi.** The pygame from the Python package site bundles its own SDL without KMS/DRM support, so it can't draw to the screen without a desktop ("kmsdrm not available"). Debian's `python3-pygame` uses the system SDL, which can. SDL then needs the EGL/GLES libraries and should be told to use OpenGL ES (`SDL_RENDER_DRIVER=opengles2`); left to itself it may pick desktop OpenGL, which Raspberry Pi OS Lite doesn't have, and the screen stays black with no error.
 - **Roon's extension API doesn't share the waveform** shown in Roon's seek bar, so the progress bar is a plain line.
 
 ## Uninstalling

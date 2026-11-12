@@ -44,9 +44,13 @@ else
 fi
 
 step "2/9 Installing system packages"
-sudo apt-get update -qq
-sudo apt-get install -y -qq git python3-venv python3-dev build-essential libasound2-dev \
-    alsa-utils fonts-dejavu-core >/dev/null
+# pygame comes from Debian rather than the Python package site: the Python package site's
+# pygame bundles its own SDL without the direct-to-screen (KMS/DRM) support a headless Pi needs.
+# The EGL/GLES/Mesa libraries let SDL hand frames to the Pi's GPU.
+sudo apt-get update
+sudo apt-get install -y git python3-venv python3-dev build-essential libasound2-dev \
+    alsa-utils fonts-dejavu-core python3-pygame \
+    libegl1 libgles2 libgbm1 libegl-mesa0 libgl1-mesa-dri
 for g in audio video render; do
     if getent group "$g" >/dev/null && ! id -nG "$RPF_USER" | grep -qw "$g"; then
         sudo usermod -aG "$g" "$RPF_USER"
@@ -67,9 +71,17 @@ else
 fi
 
 step "4/9 Python environment (a few minutes the first time)"
-[ -x venv/bin/python ] || python3 -m venv venv
-venv/bin/pip install -q --upgrade pip
-venv/bin/pip install -q pygame numpy pyalsaaudio roonapi requests
+echo "    (Orange 'Retrying' warnings mean a download was interrupted and pip is trying again - let it carry on.)"
+[ -x venv/bin/python ] || python3 -m venv --system-site-packages venv
+# The environment must see Debian's pygame (see step 2), so allow system packages and
+# remove any pygame installed into the environment by an earlier version of this installer.
+sed -i 's/^include-system-site-packages = false/include-system-site-packages = true/' venv/pyvenv.cfg
+if compgen -G "venv/lib/python3*/site-packages/pygame" >/dev/null; then
+    venv/bin/pip uninstall -y pygame
+fi
+venv/bin/pip install --upgrade pip
+venv/bin/pip install numpy pyalsaaudio roonapi requests
+venv/bin/python -c "import pygame, os; print('    pygame', pygame.version.ver, 'with SDL', '.'.join(map(str, pygame.get_sdl_version())), 'from', os.path.dirname(pygame.__file__))" 2>/dev/null | grep -v 'Hello from' || die "pygame could not be loaded"
 
 step "5/9 Settings"
 if [ -f settings.conf ]; then
@@ -153,7 +165,7 @@ After=rpf-audio.service rpf-roon.service
 Type=simple
 User=$RPF_USER
 WorkingDirectory=$RPF_DIR/PeppyMeter
-Environment=SDL_VIDEODRIVER=kmsdrm PYTHONUNBUFFERED=1
+Environment=SDL_VIDEODRIVER=kmsdrm SDL_RENDER_DRIVER=opengles2 PYTHONUNBUFFERED=1
 ExecStartPre=$make_fifo
 ExecStart=$RPF_DIR/venv/bin/python $RPF_DIR/frame_display.py
 Restart=always
