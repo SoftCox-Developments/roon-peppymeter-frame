@@ -4,8 +4,13 @@ Classic VU meters on a TV or monitor, driven by whatever Roon is playing, with t
 
 It runs on a Raspberry Pi 4 behind the screen. The needles move with the **actual analogue output of your DAC**, so they show exactly what you hear, whatever the source and whatever DSP, upsampling or HQPlayer processing sits in between. The track details come from Roon through a small Roon extension.
 
-<img width="2016" height="1512" alt="Meters 2" src="https://github.com/user-attachments/assets/542aa6d1-9fbe-4fe2-865c-5a0a192c9e9c" />
+<img width="640" height="480" alt="Meters 1" src="https://github.com/user-attachments/assets/f2b0061e-d538-475c-b4a2-32cbe2d5072e" />
 
+<img width="640" height="480" alt="Meters 2" src="https://github.com/user-attachments/assets/25af04cd-4a64-4e90-b494-9a06ee6d9c4a" />
+
+<img width="640" height="480" alt="Meters 3" src="https://github.com/user-attachments/assets/283545ce-5221-4adc-9616-0e90368c06b2" />
+
+<img width="640" height="480" alt="Meters 4" src="https://github.com/user-attachments/assets/7ef0a456-ee75-4b1b-978c-a90a20b9a35b" />
 
 ## Features
 
