@@ -12,7 +12,7 @@ FOLDERS="$P/meter_folders.txt"
 HIDE="$P/meter_hidden.txt"
 SLIDE="$P/meter_slideshow.conf"
 STRIPF="$P/meter_strip.txt"
-JSON=/dev/shm/roon-peppymeter-frame/now_playing.json
+JSON=/run/roon-peppymeter-frame/now_playing.json
 touch "$HIDE" "$STRIPF"
 
 show_help() {

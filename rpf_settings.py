@@ -18,7 +18,9 @@ TOKEN_FILE = os.path.join(BASE_DIR, "roon_token.json")  # Roon pairing token - k
 STRIP_FILE = os.path.join(BASE_DIR, "meter_strip.txt")  # per-skin strip background (meter strip)
 
 PIPE = "/tmp/rpf_peppy_pipe"                            # audio peaks -> PeppyMeter (a FIFO, no disk writes)
-META_DIR = "/dev/shm/roon-peppymeter-frame"             # RAM only, so the SD card isn't worn
+# RAM only, so the SD card isn't worn. Created by systemd (RuntimeDirectory= in rpf-roon.service).
+# Not /dev/shm: systemd-logind empties a user's files there when that user's last login session ends.
+META_DIR = "/run/roon-peppymeter-frame"
 JSON_FILE = os.path.join(META_DIR, "now_playing.json")
 ART_FILE = os.path.join(META_DIR, "current_art.jpg")
 

@@ -147,6 +147,8 @@ Type=simple
 User=$RPF_USER
 WorkingDirectory=$RPF_DIR
 Environment=PYTHONUNBUFFERED=1
+RuntimeDirectory=roon-peppymeter-frame
+RuntimeDirectoryPreserve=yes
 ExecStart=$RPF_DIR/venv/bin/python $RPF_DIR/roon_bridge.py
 Restart=always
 RestartSec=10

@@ -66,6 +66,7 @@ def log(msg):
 
 
 def write_json():
+    os.makedirs(rpf_settings.META_DIR, exist_ok=True)
     with lock:
         info["updated"] = time.time()
         tmp = JSON_FILE + ".tmp"
@@ -82,6 +83,7 @@ def art_worker():
                    f"?scale=fit&width={ART_SIZE}&height={ART_SIZE}")
             r = requests.get(url, timeout=10)
             r.raise_for_status()
+            os.makedirs(rpf_settings.META_DIR, exist_ok=True)
             tmp = ART_FILE + ".tmp"
             with open(tmp, "wb") as f:
                 f.write(r.content)
