@@ -50,6 +50,10 @@ APPINFO = {
     "website": "https://github.com/SoftCox-Developments/roon-peppymeter-frame",
 }
 
+HOW_TO_SET_ZONE = (f"To choose a zone from a list, run 'bash install.sh' again in {rpf_settings.BASE_DIR} "
+                   f"(safe to repeat). Or set 'zone = ...' under [roon] in {rpf_settings.SETTINGS_FILE}, "
+                   "then: sudo systemctl restart rpf-roon")
+
 lock = threading.Lock()
 info = {"state": "stopped", "title": None, "artist": None, "album": None,
         "position": None, "length": None, "image_key": None, "art_key": None,
@@ -73,6 +77,16 @@ def write_json():
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(info, f, ensure_ascii=False)
         os.replace(tmp, JSON_FILE)
+
+
+def write_zones(zones):
+    """List the zone names Roon can see, one per line, for install.sh to offer."""
+    os.makedirs(rpf_settings.META_DIR, exist_ok=True)
+    names = sorted(z.get("display_name", "?") for z in zones.values())
+    tmp = rpf_settings.ZONES_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write("\n".join(names) + "\n")
+    os.replace(tmp, rpf_settings.ZONES_FILE)
 
 
 def art_worker():
@@ -104,13 +118,13 @@ def find_zone(zones):
     if not ZONE:
         if not zone_warned:
             log("No zone set. Zones Roon can see: " + ", ".join(names))
-            log(f"Put one of them in {rpf_settings.SETTINGS_FILE} under [roon] as 'zone = ...', "
-                "then: sudo systemctl restart rpf-roon")
+            log(HOW_TO_SET_ZONE)
             zone_warned = True
         return None
     zid = next((k for k, z in zones.items() if z.get("display_name") == ZONE), None)
     if zid is None and not zone_warned:
         log(f"Zone '{ZONE}' not found (yet). Zones Roon can see: " + ", ".join(names))
+        log(HOW_TO_SET_ZONE)
         zone_warned = True
     return zid
 
@@ -209,6 +223,7 @@ def main():
         sys.exit(1)
 
     log(f"Connected; {len(roon.zones)} zones visible")
+    write_zones(roon.zones)
     roon.register_state_callback(on_change)
     on_change("toplevel", [])
     while True:

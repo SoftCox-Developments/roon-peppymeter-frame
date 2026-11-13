@@ -31,7 +31,7 @@ cd "$RPF_DIR"
 echo "Roon PeppyMeter Frame - installing in $RPF_DIR for user $RPF_USER"
 sudo -v || die "This installer needs sudo."
 
-step "1/9 Checking for other PeppyMeter services"
+step "1/10 Checking for other PeppyMeter services"
 if systemctl list-unit-files peppymeter.service 2>/dev/null | grep -q '^peppymeter.service'; then
     warn "A peppymeter.service already exists. Two copies would fight over the screen and audio."
     if ask "Stop and disable peppymeter.service?" Y; then
@@ -43,7 +43,7 @@ else
     echo "    None found."
 fi
 
-step "2/9 Installing system packages"
+step "2/10 Installing system packages"
 # pygame comes from Debian rather than the Python package site: the Python package site's
 # pygame bundles its own SDL without the direct-to-screen (KMS/DRM) support a headless Pi needs.
 # The EGL/GLES/Mesa libraries let SDL hand frames to the Pi's GPU.
@@ -58,7 +58,7 @@ for g in audio video render; do
     fi
 done
 
-step "3/9 Fetching PeppyMeter and the skins"
+step "3/10 Fetching PeppyMeter and the skins"
 if [ -d PeppyMeter/.git ]; then
     echo "    PeppyMeter already present"
 else
@@ -70,7 +70,7 @@ else
     git clone --depth 1 "$SKINS_REPO" skins
 fi
 
-step "4/9 Python environment (a few minutes the first time)"
+step "4/10 Python environment (a few minutes the first time)"
 echo "    (Orange 'Retrying' warnings mean a download was interrupted and pip is trying again - let it carry on.)"
 [ -x venv/bin/python ] || python3 -m venv --system-site-packages venv
 # The environment must see Debian's pygame (see step 2), so allow system packages and
@@ -83,7 +83,7 @@ venv/bin/pip install --upgrade pip
 venv/bin/pip install numpy pyalsaaudio roonapi requests
 venv/bin/python -c "import pygame, os; print('    pygame', pygame.version.ver, 'with SDL', '.'.join(map(str, pygame.get_sdl_version())), 'from', os.path.dirname(pygame.__file__))" 2>/dev/null | grep -v 'Hello from' || die "pygame could not be loaded"
 
-step "5/9 Settings"
+step "5/10 Settings"
 if [ -f settings.conf ]; then
     echo "    Keeping your settings.conf"
 else
@@ -107,10 +107,10 @@ fi
 [ -f meter_hidden.txt ] || cp default_meter_hidden.txt meter_hidden.txt
 touch meter_strip.txt
 
-step "6/9 Configuring PeppyMeter"
+step "6/10 Configuring PeppyMeter"
 venv/bin/python configure_peppymeter.py
 
-step "7/9 Installing the meter command and services"
+step "7/10 Installing the meter command and services"
 sed "s|@RPF_DIR@|$RPF_DIR|g" meter | sudo tee /usr/local/bin/meter >/dev/null
 sudo chmod 755 /usr/local/bin/meter
 
@@ -204,7 +204,7 @@ rm -f "$SUDOERS_TMP"
 sudo systemctl daemon-reload
 sudo systemctl enable rpf-audio rpf-roon rpf-display >/dev/null
 
-step "8/9 HDMI output mode"
+step "8/10 HDMI output mode"
 CMDLINE=/boot/firmware/cmdline.txt
 W=$(sed -n 's/^width *= *//p' settings.conf | tr -d ' '); W=${W:-1920}
 H=$(sed -n 's/^height *= *//p' settings.conf | tr -d ' '); H=${H:-1080}
@@ -222,7 +222,9 @@ else
     fi
 fi
 
-step "9/9 Starting"
+step "9/10 Starting"
+ZONES_FILE=/run/roon-peppymeter-frame/zones.txt
+rm -f "$ZONES_FILE"
 sudo systemctl restart rpf-roon rpf-audio
 sleep 3
 sudo systemctl restart rpf-display
@@ -231,22 +233,53 @@ for s in rpf-audio rpf-roon rpf-display; do
     printf '    %-12s %s\n' "$s" "$(systemctl is-active $s)"
 done
 
+step "10/10 Connecting to Roon"
+EXT_NAME=$(sed -n 's/^extension_name *= *//p' settings.conf | tr -d '\r')
 ZONE=$(sed -n 's/^zone *= *//p' settings.conf | tr -d '\r')
-cat <<EOF
-
-Installed. Next:
-  1. In Roon: Settings > Extensions > enable "$(sed -n 's/^extension_name *= *//p' settings.conf)".
-EOF
-if [ -z "$ZONE" ]; then
-cat <<EOF
-  2. Choose the zone to follow. The zones Roon can see are listed by:
-        journalctl -u rpf-roon -n 20 --no-pager
-     Put one in settings.conf under [roon] (zone = ...), then:
-        sudo systemctl restart rpf-roon
-EOF
+if [ -n "$ZONE" ]; then
+    echo "    Following zone: $ZONE (from settings.conf)"
+elif [ ! -t 0 ]; then
+    warn "Not running interactively - connect to Roon yourself (see below)."
+else
+    echo "    In Roon, open Settings > Extensions and click Enable next to \"$EXT_NAME\"."
+    echo "    (If it's already enabled, there's nothing to do.)"
+    echo "    Waiting for Roon... press Enter to skip and do this later."
+    for _ in $(seq 150); do
+        [ -s "$ZONES_FILE" ] && break
+        if read -r -t 2; then break; fi
+    done
+    if [ -s "$ZONES_FILE" ]; then
+        mapfile -t zones < "$ZONES_FILE"
+        echo "    Connected. Which zone should the meters follow?"
+        for i in "${!zones[@]}"; do printf '      %d) %s\n' $((i + 1)) "${zones[$i]}"; done
+        n=""
+        while true; do
+            if ! read -r -p "    Zone number: " n; then n=""; break; fi
+            if [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] && [ "$n" -le ${#zones[@]} ]; then break; fi
+            echo "    Please enter a number from 1 to ${#zones[@]}."
+        done
+        if [ -n "$n" ]; then
+            ZONE="${zones[$((n - 1))]}"
+            Z="$ZONE" awk '/^zone *=/ { print "zone = " ENVIRON["Z"]; next } { print }' settings.conf > settings.conf.tmp
+            mv settings.conf.tmp settings.conf
+            sudo systemctl restart rpf-roon
+            echo "    Following zone: $ZONE"
+        fi
+    else
+        warn "Skipped - you can do this later (see below)."
+    fi
 fi
-cat <<EOF
-  3. Play some music. 'meter' lists the skins; 'meter --help' shows what it can do.
-EOF
-[ "${REBOOT_NEEDED:-0}" = 1 ] && echo "  4. Reboot when convenient (sudo reboot) to apply the HDMI mode."
+
+echo
+echo "Installed."
+if [ -z "$ZONE" ]; then
+    echo "To finish connecting to Roon:"
+    echo "  1. In Roon: Settings > Extensions > enable \"$EXT_NAME\"."
+    echo "  2. List the zones Roon can see:"
+    echo "        journalctl -u rpf-roon -n 20 --no-pager"
+    echo "     Put one in settings.conf under [roon] (zone = ...), then:"
+    echo "        sudo systemctl restart rpf-roon"
+fi
+echo "Play some music. 'meter' lists the skins; 'meter --help' shows what it can do."
+if [ "${REBOOT_NEEDED:-0}" = 1 ]; then echo "Reboot when convenient (sudo reboot) to apply the HDMI mode."; fi
 echo

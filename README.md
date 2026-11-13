@@ -61,11 +61,13 @@ A fourth, `rpf-slideshow`, runs only while `meter slideshow` is switched on.
 
 ### 2. Download and install
 
+Paste each of these two lines on its own, and press Enter after each. (Each is a single line on purpose: when a multi-line paste reaches `sudo`, the lines after it can be swallowed.)
+
 ```
 sudo apt update && sudo apt install -y git
-git clone https://github.com/SoftCox-Developments/roon-peppymeter-frame.git
-cd roon-peppymeter-frame
-bash install.sh
+```
+```
+git clone https://github.com/SoftCox-Developments/roon-peppymeter-frame.git && cd roon-peppymeter-frame && bash install.sh
 ```
 
 The installer takes a few minutes the first time. It:
@@ -79,27 +81,32 @@ The installer takes a few minutes the first time. It:
 7. Installs the `meter` command and the services, and a sudoers rule that lets `meter` restart the display without a password.
 8. Offers to fix the HDMI output at 1920x1080, 60 Hz. Without this, many TVs end up at 4K/30 Hz.
 9. Starts everything.
+10. Connects to Roon: it asks you to enable the extension in Roon, then lists your zones so you can choose the one the meters follow, by number.
 
 ### 3. Connect to Roon
 
-1. In Roon, go to **Settings > Extensions** and enable **Frame Display Bridge**.
-2. Choose the zone the meters should follow. The extension lists the zones it can see:
+The installer's last step does this with you. When it asks, open Roon's **Settings > Extensions** and click **Enable** next to **Frame Display Bridge**. It then lists your Roon zones: type the number of the one the meters should follow.
+
+If you skipped that step, or want to follow a different zone later, the easiest way is to run the installer again: it's safe to repeat, keeps your settings, and offers the list of zones again whenever no zone is set. To change to a different zone, first clear the old one (leave `zone =` empty in `settings.conf`), then run `bash install.sh`.
+
+Or set it by hand:
+
+1. Make sure **Frame Display Bridge** is enabled in Roon's **Settings > Extensions**.
+2. List the zones it can see:
    ```
    journalctl -u rpf-roon -n 20 --no-pager
    ```
-   Put the name, exactly as Roon shows it, in `settings.conf`:
-   ```
-   nano settings.conf
-   ```
+3. Put the name, exactly as Roon shows it, in `settings.conf` (`nano settings.conf`, then save with Ctrl+O, Enter, Ctrl+X):
    ```
    [roon]
    zone = Living Room
    ```
-   Save (Ctrl+O, Enter, Ctrl+X), then:
+   then restart the extension:
    ```
    sudo systemctl restart rpf-roon
    ```
-3. If you let the installer set the HDMI mode, reboot once: `sudo reboot`.
+
+If you let the installer set the HDMI mode, reboot once: `sudo reboot`.
 
 Play something, and the meters and track details should appear.
 
@@ -152,9 +159,7 @@ journalctl -u rpf-display -n 20 --no-pager
 
 **The needles don't move.** Check the audio is reaching the Pi. Stop the meters, run a 10-second level test with music playing, then start them again:
 ```
-sudo systemctl stop rpf-display rpf-audio
-arecord -D plughw:CARD=CODEC,DEV=0 -f S16_LE -r 44100 -c 2 -d 10 -V stereo /dev/null
-sudo systemctl start rpf-audio rpf-display
+sudo systemctl stop rpf-display rpf-audio; arecord -D plughw:CARD=CODEC,DEV=0 -f S16_LE -r 44100 -c 2 -d 10 -V stereo /dev/null; sudo systemctl start rpf-audio rpf-display
 ```
 (Use your own device name from `settings.conf`.) The text meter should swing with the music. If it doesn't, check the cable and that the DAC output is live. If the level is very low, check whether volume is being reduced digitally before the DAC.
 
@@ -177,7 +182,7 @@ A few things worth knowing if you build on this:
 
 - **PeppyMeter's pipe reader has a speed limit.** It reads one record, pauses for a tenth of its polling interval, and repeats until the pipe is empty. Feed it much faster than it can drain (a few hundred records a second at 60 fps) and it never gets to the end, so the needles freeze. Feed it slower than it polls and it reads an empty pipe as silence, so the needles dip. `audio_bridge.py` sends 120 peak readings a second for PeppyMeter's 60 polls.
 - **PeppyMeter takes the screen size from the skin folder's name**, so a `1920x720-...` folder would otherwise open a 1920x720 screen. This project sets the size from `settings.conf` instead.
-- **Pasting multi-line commands into an SSH window** can go wrong when `sudo` stops to ask for a password: the next pasted lines get swallowed. Run `sudo -v` on its own first, or wrap blocks in `{ ... }`.
+- **Pasting multi-line commands into an SSH window** can go wrong whenever a line uses `sudo`: the lines pasted after it can be swallowed, even when no password is asked for. Put the commands on one line joined with `&&`, or wrap a block in `{ ... }`.
 - **Don't keep service files in `/dev/shm`.** It looks like the ideal RAM folder, but systemd-logind empties a user's files there when that user's last login session ends, so the now-playing info vanished as soon as the SSH window closed. This project uses `/run/roon-peppymeter-frame`, created by systemd for the Roon bridge.
 - **Use Debian's pygame on a headless Pi.** The pygame from the Python package site bundles its own SDL without KMS/DRM support, so it can't draw to the screen without a desktop ("kmsdrm not available"). Debian's `python3-pygame` uses the system SDL, which can. SDL then needs the EGL/GLES libraries and should be told to use OpenGL ES (`SDL_RENDER_DRIVER=opengles2`); left to itself it may pick desktop OpenGL, which Raspberry Pi OS Lite doesn't have, and the screen stays black with no error.
 - **Roon's extension API doesn't share the waveform** shown in Roon's seek bar, so the progress bar is a plain line.

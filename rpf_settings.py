@@ -23,6 +23,7 @@ PIPE = "/tmp/rpf_peppy_pipe"                            # audio peaks -> PeppyMe
 META_DIR = "/run/roon-peppymeter-frame"
 JSON_FILE = os.path.join(META_DIR, "now_playing.json")
 ART_FILE = os.path.join(META_DIR, "current_art.jpg")
+ZONES_FILE = os.path.join(META_DIR, "zones.txt")     # zone names, one per line (read by install.sh)
 
 DEFAULTS = {
     "roon": {
