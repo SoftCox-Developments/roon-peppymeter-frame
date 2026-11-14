@@ -39,7 +39,7 @@ LOOKS = [
     ("Mirror 40",      40, [(0, 150, 140), (0, 200, 255), (200, 240, 255)],  {"mirror": True}),
 ]
 MARGIN_X = 60
-MARGIN_Y = 60
+MARGIN_Y = 10      # space above and below the bars (was 60; Andrew 2026-11-14: bars 100 px taller)
 
 
 def colours(cs):

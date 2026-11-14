@@ -73,7 +73,7 @@ show_list() {
         printf '%s %3d  %s\n' "$mark" $((i + 1)) "${all[$i]}"
     done
     if [ $on -eq 1 ]; then echo "       On screen: visualiser ('vis off' or any 'meter' switch returns to the meters)"
-    else echo "       On screen: meters ('vis N' shows a visualiser${current:+; last used: $current})"; fi
+    else echo "       On screen: meters ('vis N' shows a visualiser${current:+; selected: $current})"; fi
     return 0
 }
 
