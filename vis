@@ -1,0 +1,128 @@
+#!/bin/bash
+# vis - choose a visualiser on the Roon PeppyMeter Frame display (VISUALISER EXTENSION)
+#
+# Copyright (C) 2026 Andrew Cox (SoftCox Developments)
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# vis_install.sh copies this to /usr/local/bin/vis and fills in the install folder below.
+# Works alongside 'meter': 'vis N' puts a visualiser on the screen, any 'meter' switch
+# (or 'vis off') brings the meters back.
+
+P="@RPF_DIR@"
+SKINS="$P/vis_skins"
+CUR="$P/vis_current.txt"
+STRIPF="$P/vis_strip.txt"
+touch "$STRIPF"
+
+show_help() {
+    cat <<'HELPEOF'
+Usage: vis [COMMAND] [ARG]
+Show a visualiser on the display instead of the meters, or change it.
+
+Commands:
+  (none)            List the visualisers, numbered; * marks the one on screen
+  N                 Show visualiser number N (numbers from 'vis')
+  FOLDER/NAME       Show by full name, e.g. "1920x720-rpf-spectrum/Aurora 48"
+  next, prev        Show the next/previous visualiser, then the list
+  random            Show a random visualiser, then the list
+  strip [MODE]      Show, or set, the now-playing strip for the current visualiser:
+                    clear, dim, black, or off (no strip - full screen)
+  off               Back to the meters (so does any 'meter' switch, e.g. 'meter next')
+  -h, --help, help  Show this help
+
+Notes:
+  Each switch restarts the display, so the screen blanks for a second or two.
+  Skins in a 1920x720 folder leave room for the strip underneath; 1920x1080 skins fill
+  the screen and have the strip off unless you turn it on (it then covers the bottom).
+  The strip setting is remembered for each visualiser.
+  After a reboot the display starts with the meters; 'vis N' brings a visualiser back.
+  The meter slideshow would keep switching back to the meters, so 'vis' turns it off.
+
+Files (in the install folder):
+  vis_skins/        spectrum skins, one folder per screen size (spectrum.txt inside)
+  vis_current.txt   the chosen visualiser
+  vis_strip.txt     per-visualiser strip setting
+  settings.conf     optional [vis] section - see VIS_README.md
+HELPEOF
+}
+
+case "$1" in
+    -h|--help|help) show_help; exit 0 ;;
+    -*) echo "vis: unknown option '$1'"; echo "Try 'vis --help'."; exit 1 ;;
+esac
+
+load() {
+    all=()
+    for d in "$SKINS"/*/; do
+        f=$(basename "$d")
+        [ -f "$d/spectrum.txt" ] || continue
+        while IFS= read -r s; do
+            all+=("$f/$s")
+        done < <(tr -d '\r' < "$d/spectrum.txt" | sed -n 's/^\[\(.*\)\][[:space:]]*$/\1/p')
+    done
+    n=${#all[@]}
+    current=$(head -n 1 "$CUR" 2>/dev/null | tr -d '\r')
+    idx=-1
+    for i in "${!all[@]}"; do [ "${all[$i]}" = "$current" ] && idx=$i; done
+    on=0; systemctl is-active --quiet rpf-vis && on=1
+}
+
+show_list() {
+    for i in "${!all[@]}"; do
+        mark=" "; [ $i -eq $idx ] && [ $on -eq 1 ] && mark="*"
+        printf '%s %3d  %s\n' "$mark" $((i + 1)) "${all[$i]}"
+    done
+    if [ $on -eq 1 ]; then echo "       On screen: visualiser ('vis off' or any 'meter' switch returns to the meters)"
+    else echo "       On screen: meters ('vis N' shows a visualiser${current:+; last used: $current})"; fi
+    return 0
+}
+
+apply() {
+    echo "$1" > "$CUR"
+    if systemctl is-active --quiet rpf-slideshow; then
+        sudo systemctl disable --now rpf-slideshow 2>/dev/null
+        echo "Meter slideshow turned off (it would switch back to the meters)."
+    fi
+    sudo systemctl restart rpf-vis
+}
+
+load
+if [ $n -eq 0 ]; then echo "No visualiser skins in $SKINS. Run: bash $P/vis_install.sh"; exit 1; fi
+case "$1" in
+    "")
+        show_list ;;
+    next)
+        apply "${all[$(( (idx + 1) % n ))]}"; load; show_list ;;
+    prev)
+        [ $idx -lt 0 ] && idx=0
+        apply "${all[$(( (idx - 1 + n) % n ))]}"; load; show_list ;;
+    random)
+        r=$idx
+        if [ $n -le 1 ]; then r=0; else while [ $r -eq $idx ]; do r=$((RANDOM % n)); done; fi
+        apply "${all[$r]}"; load; show_list ;;
+    off)
+        if [ $on -eq 1 ]; then sudo systemctl restart rpf-display; echo "Back to the meters."
+        else echo "The meters are already on screen."; fi ;;
+    strip)
+        if [ $idx -lt 0 ]; then echo "No visualiser chosen yet. Run 'vis' to list them."; exit 1; fi
+        now=$(awk -F'\t' -v k="$current" '$1 == k { print $2 }' "$STRIPF")
+        if [ -z "$2" ]; then echo "$current: strip = ${now:-default (on under 720 skins, off over full-screen ones)}"; exit 0; fi
+        case "$2" in clear|dim|black|off) ;; *) echo "Usage: vis strip [clear|dim|black|off]"; exit 1 ;; esac
+        awk -F'\t' -v k="$current" '$1 != k' "$STRIPF" > "$STRIPF.tmp"
+        printf '%s\t%s\n' "$current" "$2" >> "$STRIPF.tmp"
+        mv "$STRIPF.tmp" "$STRIPF"
+        [ $on -eq 1 ] && sudo systemctl restart rpf-vis
+        echo "$current: strip = $2 (was ${now:-default})" ;;
+    *)
+        want="$*"
+        if [[ "$want" =~ ^[0-9]+$ ]]; then
+            if [ "$want" -lt 1 ] || [ "$want" -gt $n ]; then echo "No visualiser number $want (1-$n)."; exit 1; fi
+            t="${all[$((want - 1))]}"
+        else
+            t=""
+            for s in "${all[@]}"; do [ "$s" = "$want" ] && t="$s"; done
+            [ -n "$t" ] || { echo "No visualiser called '$want'. Run 'vis' to list them."; exit 1; }
+        fi
+        apply "$t"
+        echo "Now showing: $t" ;;
+esac
