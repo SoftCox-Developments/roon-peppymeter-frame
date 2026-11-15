@@ -1,7 +1,4 @@
-# Visualiser extension for Roon PeppyMeter Frame (work in progress)
-
-**Status: test version, not yet published.** Built and tested in Claude's workspace with
-stand-in audio and Roon data; **not yet run on a Raspberry Pi**.
+# Visualiser extension for Roon PeppyMeter Frame
 
 Adds a `vis` command that shows a spectrum analyser on the display instead of the
 meters, with the same now-playing strip and paused screen. Any `meter` switch (or
@@ -9,8 +6,8 @@ meters, with the same now-playing strip and paused screen. Any `meter` switch (o
 
 ## What is what
 
-Everything belonging to the extension is named `vis...`. Nothing in the published
-project is edited.
+Everything belonging to the extension is named `vis...`. The meter programs are not
+edited.
 
 | File | What it is |
 |------|-----------|
@@ -36,8 +33,8 @@ System changes made by `vis_install.sh` (all undone by `vis_uninstall.sh`):
 
 ## Install
 
-Needs a working Roon PeppyMeter Frame (installed with `install.sh`). Copy the eight
-`vis` files into the install folder, then:
+Needs a working Roon PeppyMeter Frame (installed with `install.sh`). From the install
+folder:
 
     bash vis_install.sh
 
@@ -87,12 +84,11 @@ If the bars sit too low or hit the top on your music, change `gain_db` first.
 fits as many as the skin's bar width allows. `vis_make_skins.py` rewrites only its own
 two folders.
 
-## Known limits of this test version
+## Known limits
 
 - After a reboot the meters come back; run `vis N` again.
 - `vis` turns the meter slideshow off (it would keep switching back to the meters).
 - No slideshow for visualisers yet.
-- Spectrum levels were tuned on test signals, not on real music from the capture device.
 
 ## Credits
 
