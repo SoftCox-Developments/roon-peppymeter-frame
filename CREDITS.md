@@ -8,6 +8,14 @@ The meters themselves. [PeppyMeter](https://github.com/project-owner/PeppyMeter)
 
 This project uses PeppyMeter unmodified. `install.sh` downloads it from its own repository; `frame_display.py` builds on its `Peppymeter` class and replaces only the display loop to add the now-playing overlay. Because it builds on PeppyMeter, this project is released under the same licence.
 
+## PeppySpectrum
+
+The spectrum analyser behind the `vis` command. [PeppySpectrum](https://github.com/project-owner/PeppySpectrum) is PeppyMeter's sibling, also written in Python by **peppy.player** and released under the GNU General Public License v3 or later.
+
+It is used unmodified too. `vis_install.sh` downloads it from its own repository; `vis_spectrum_display.py` builds on its `Spectrum` class and does the drawing itself, so the now-playing strip can share the screen. The spectrum data is sent in the format of its companion, [peppyalsa](https://github.com/project-owner/peppyalsa).
+
+The spectrum skins that come with the visualiser extension are this project's own, made by `vis_make_skins.py`.
+
 ## The meter designs (skins)
 
 The skins are by **Gelo5** (the Gelo5-BASIC sets) and **balbuze** (the circular and linear sets), from the PeppyMeterBasic collection that balbuze maintains for Volumio:
@@ -26,7 +34,8 @@ Roon is a trademark of Roon Labs LLC. This project is not affiliated with or end
 ## Other open-source software
 
 - [pygame](https://www.pygame.org/) and SDL, for drawing.
-- [NumPy](https://numpy.org/), for the audio peak calculations.
+- [NumPy](https://numpy.org/), for the audio peak and spectrum calculations.
+- [Pillow](https://python-pillow.org/), used by PeppySpectrum.
 - [pyalsaaudio](https://github.com/larsimmisch/pyalsaaudio), for audio capture.
 - [Requests](https://requests.readthedocs.io/), for fetching cover art.
 - The [DejaVu fonts](https://dejavu-fonts.github.io/), installed from Raspberry Pi OS.

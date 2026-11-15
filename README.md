@@ -1,16 +1,16 @@
 # Roon PeppyMeter Frame
 
-Classic VU meters on a TV or monitor, driven by whatever Roon is playing, with the track, artist, album, progress and cover art shown alongside, and the album art filling the screen when you pause.
+Classic VU meters, or a spectrum analyser, on a TV or monitor, driven by whatever Roon is playing, with the track, artist, album, progress and cover art shown alongside, and the album art filling the screen when you pause.
 
 It runs on a Raspberry Pi 4 behind the screen. The needles move with the **actual analogue output of your DAC**, so they show exactly what you hear, whatever the source and whatever DSP, upsampling or HQPlayer processing sits in between. The track details come from Roon through a small Roon extension.
 
-<img width="640" height="480" alt="Meters 1" src="https://github.com/user-attachments/assets/f2b0061e-d538-475c-b4a2-32cbe2d5072e" />
+<img src="images/meters-free.jpg" width="640" alt="VU meters with the now-playing strip underneath" />
 
-<img width="640" height="480" alt="Meters 2" src="https://github.com/user-attachments/assets/25af04cd-4a64-4e90-b494-9a06ee6d9c4a" />
+<img src="images/spectrum-aurora.jpg" width="640" alt="Spectrum analyser with the now-playing strip underneath" />
 
-<img width="640" height="480" alt="Meters 3" src="https://github.com/user-attachments/assets/283545ce-5221-4adc-9616-0e90368c06b2" />
+<img src="images/meters-luxman-radio.jpg" width="640" alt="Power meters while playing internet radio" />
 
-<img width="640" height="480" alt="Meters 4" src="https://github.com/user-attachments/assets/7ef0a456-ee75-4b1b-978c-a90a20b9a35b" />
+<img src="images/paused.jpg" width="640" alt="Paused: large cover art" />
 
 ## Features
 
@@ -19,6 +19,7 @@ It runs on a Raspberry Pi 4 behind the screen. The needles move with the **actua
 - **Paused**: the meters give way to large cover art. **Stopped**: the meters stay, and the strip clears.
 - **Dozens of meter designs** from the PeppyMeter skin collection by Gelo5 and balbuze, at 1920x1080, 1920x720, 1920x515 and 1920x480. The strip fits itself to each one: under the shorter designs it uses the free space and grows to suit.
 - **The `meter` command** to choose a design by number, step through them, pick at random, run a slideshow, hide the ones you don't like, nudge a design up or down, and darken the strip behind the text.
+- **Spectrum analyser** (optional): the `vis` command swaps the meters for dancing frequency bars, built on [PeppySpectrum](https://github.com/project-owner/PeppySpectrum), with the same strip and paused screen. `meter` swaps back.
 - **Starts by itself** at power-on and finds your Roon Core automatically.
 - Everything that changes all the time lives in memory, not on the SD card.
 
@@ -147,6 +148,32 @@ A few tips:
 - Some lower-resolution duplicates and the linear "fluo" designs are hidden by default. `meter unhide` lists them.
 - The list of design folders is in `meter_folders.txt`. Other 1920-wide folders from the skin collection can be added there.
 
+## Spectrum visualisers: the `vis` command
+
+An optional extra, new in version 2. It shows a spectrum analyser in place of the meters, with the same now-playing strip and paused screen. Install it from this folder once the meters are working:
+
+```
+bash vis_install.sh
+```
+
+```
+vis                   list the visualisers, numbered; * marks the one on screen
+vis 1                 show number 1
+vis next / prev       step through the list
+vis random            pick one at random
+vis strip dim         darken the background behind the track details (clear, dim, black or off)
+vis hide              hide the selected visualiser from the list (vis unhide to bring them back)
+vis off               back to the meters (any meter switch, such as meter next, does the same)
+vis --help            everything else
+```
+
+- Seven looks come with it, from 20 wide bars to 96 fine ones, some with falling peak markers.
+- Full-screen versions with no strip are hidden to begin with. `vis unhide` lists them.
+- After a restart of the Pi the meters come back. `vis 1` returns to the bars.
+- It uses a little more of the Pi's processor than the meters do (measured: under half of one core in all).
+
+Settings, how to make your own looks, and what the installer changes are in [VIS_README.md](VIS_README.md). `bash vis_uninstall.sh` removes it and leaves the meters as they were.
+
 ## Troubleshooting
 
 Each service writes a log. These show the latest lines:
@@ -192,6 +219,8 @@ A few things worth knowing if you build on this:
 ```
 bash uninstall.sh
 ```
+If you installed the visualisers, run `bash vis_uninstall.sh` first.
+
 This removes the services, the `meter` command and the sudoers rule. It leaves this folder and the HDMI setting alone (see the script's message for where those are), and you can remove the extension in Roon's settings.
 
 ## Credits and licence
