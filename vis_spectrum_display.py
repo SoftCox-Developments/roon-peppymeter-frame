@@ -54,7 +54,7 @@ def current_skin():
     try:
         with open(vis_settings.CURRENT_FILE, encoding="utf-8") as f:
             folder, _, name = f.readline().strip().partition("/")
-        if folder and name and name in sections(folder):
+        if folder and name and (name in sections(folder) or vis_settings.hybrid_pack(folder)):
             return folder, name
     except OSError:
         pass
@@ -107,14 +107,14 @@ def strip_mode(folder, name, default):
     return default
 
 
-def write_config(folder, name, bars, pipe):
+def write_config(folder, name, bars, pipe, base=None):
     """PeppySpectrum reads config.txt from the current folder; give it one of our own."""
     os.makedirs(vis_settings.RUN_DIR, exist_ok=True)
     with open(os.path.join(vis_settings.RUN_DIR, "config.txt"), "w", encoding="utf-8") as f:
         f.write(f"""# Written by vis_spectrum_display.py at every start - edits are lost.
 [current]
 spectrum = {name}
-base.folder = {vis_settings.SKINS_DIR}
+base.folder = {base or vis_settings.SKINS_DIR}
 spectrum.folder = {folder}
 update.period = 1000000
 max.value = 100
@@ -154,6 +154,9 @@ def main():
     if not os.path.isfile(os.path.join(vis_settings.SPECTRUM_DIR, "spectrum.py")):
         die(f"PeppySpectrum not found in {vis_settings.SPECTRUM_DIR}. Run: bash vis_install.sh")
     folder, name = current_skin()
+    if vis_settings.hybrid_pack(folder):
+        # A meter + spectrum skin: that is vis_hybrid_display.py's job
+        os.execv(sys.executable, [sys.executable, os.path.join(HERE, "vis_hybrid_display.py")] + sys.argv[1:])
     bars = bars_for(folder, name)
     pipe = vis_settings.spectrum_pipe(bars)
     ensure_fifo(pipe)
