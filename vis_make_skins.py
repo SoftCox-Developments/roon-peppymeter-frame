@@ -11,7 +11,7 @@
 
 Two folders are written, each with the same looks:
   1920x720-rpf-spectrum    bars in the top 720 lines, now-playing strip underneath
-  1920x1080-rpf-spectrum   full screen (strip off unless you turn it on with 'vis strip')
+  1920x1080-rpf-spectrum   full screen, no strip; these start hidden ('vis unhide')
 (sizes follow [display] width/height in settings.conf).
 
 The skins use PeppySpectrum's standard spectrum.txt keys plus one of our own, rpf.bars,
@@ -115,6 +115,12 @@ def main():
     if not os.path.exists(vis_settings.CURRENT_FILE):
         with open(vis_settings.CURRENT_FILE, "w", encoding="utf-8") as f:
             f.write(f"{made[0]}/{LOOKS[0][0]}\n")
+    # First time only: the full-screen skins start hidden ('vis unhide' lists them). With
+    # the strip they are the same looks as the first folder with the bars partly covered.
+    if not os.path.exists(vis_settings.HIDDEN_FILE):
+        with open(vis_settings.HIDDEN_FILE, "w", encoding="utf-8") as f:
+            f.writelines(f"{made[1]}/{look[0]}\n" for look in LOOKS)
+        print(f"The {len(LOOKS)} full-screen skins start hidden: 'vis unhide' lists them")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ P="@RPF_DIR@"
 SKINS="$P/vis_skins"
 CUR="$P/vis_current.txt"
 STRIPF="$P/vis_strip.txt"
+HIDE="$P/vis_hidden.txt"
 touch "$STRIPF"
 
 show_help() {
@@ -25,6 +26,8 @@ Commands:
   FOLDER/NAME       Show by full name, e.g. "1920x720-rpf-spectrum/Aurora 48"
   next, prev        Show the next/previous visualiser, then the list
   random            Show a random visualiser, then the list
+  hide [N]          Hide visualiser N (default: the selected one)
+  unhide [N]        List hidden visualisers, or unhide hidden visualiser number N
   strip [MODE]      Show, or set, the now-playing strip for the current visualiser:
                     clear, dim, black, or off (no strip - full screen)
   off               Back to the meters (so does any 'meter' switch, e.g. 'meter next')
@@ -32,8 +35,11 @@ Commands:
 
 Notes:
   Each switch restarts the display, so the screen blanks for a second or two.
-  Skins in a 1920x720 folder leave room for the strip underneath; 1920x1080 skins fill
-  the screen and have the strip off unless you turn it on (it then covers the bottom).
+  Skins in a 1920x720 folder leave room for the strip underneath, so the bars and the
+  now-playing details are both in full view.
+  Skins in a 1920x1080 folder fill the whole screen with bars and no strip. They start
+  hidden: 'vis unhide' lists them. Turning the strip on over one covers the bottom of
+  its bars, so for bars with a strip use the 1920x720 version of the same look.
   The strip setting is remembered for each visualiser.
   After a reboot the display starts with the meters; 'vis N' brings a visualiser back.
   The meter slideshow would keep switching back to the meters, so 'vis' turns it off.
@@ -42,6 +48,7 @@ Files (in the install folder):
   vis_skins/        spectrum skins, one folder per screen size (spectrum.txt inside)
   vis_current.txt   the chosen visualiser
   vis_strip.txt     per-visualiser strip setting
+  vis_hidden.txt    hidden visualisers, one FOLDER/NAME per line
   settings.conf     optional [vis] section - see VIS_README.md
 HELPEOF
 }
@@ -52,7 +59,7 @@ case "$1" in
 esac
 
 load() {
-    all=()
+    all=(); shown=(); hidden=()
     for d in "$SKINS"/*/; do
         f=$(basename "$d")
         [ -f "$d/spectrum.txt" ] || continue
@@ -60,19 +67,26 @@ load() {
             all+=("$f/$s")
         done < <(tr -d '\r' < "$d/spectrum.txt" | sed -n 's/^\[\(.*\)\][[:space:]]*$/\1/p')
     done
-    n=${#all[@]}
+    for s in "${all[@]}"; do
+        if grep -qxF -- "$s" "$HIDE" 2>/dev/null; then hidden+=("$s"); else shown+=("$s"); fi
+    done
+    n=${#shown[@]}
     current=$(head -n 1 "$CUR" 2>/dev/null | tr -d '\r')
-    idx=-1
-    for i in "${!all[@]}"; do [ "${all[$i]}" = "$current" ] && idx=$i; done
+    idx=-1; known=0
+    for i in "${!shown[@]}"; do [ "${shown[$i]}" = "$current" ] && idx=$i; done
+    for s in "${all[@]}"; do [ "$s" = "$current" ] && known=1; done
     on=0; systemctl is-active --quiet rpf-vis && on=1
 }
 
 show_list() {
-    for i in "${!all[@]}"; do
+    for i in "${!shown[@]}"; do
         mark=" "; [ $i -eq $idx ] && [ $on -eq 1 ] && mark="*"
-        printf '%s %3d  %s\n' "$mark" $((i + 1)) "${all[$i]}"
+        printf '%s %3d  %s\n' "$mark" $((i + 1)) "${shown[$i]}"
     done
-    if [ $on -eq 1 ]; then echo "       On screen: visualiser ('vis off' or any 'meter' switch returns to the meters)"
+    [ ${#hidden[@]} -gt 0 ] && echo "       (${#hidden[@]} hidden - 'vis unhide' lists them)"
+    if [ $on -eq 1 ]; then
+        [ $idx -lt 0 ] && echo "       Showing: $current (hidden)"
+        echo "       On screen: visualiser ('vis off' or any 'meter' switch returns to the meters)"
     else echo "       On screen: meters ('vis N' shows a visualiser${current:+; selected: $current})"; fi
     return 0
 }
@@ -87,24 +101,48 @@ apply() {
 }
 
 load
-if [ $n -eq 0 ]; then echo "No visualiser skins in $SKINS. Run: bash $P/vis_install.sh"; exit 1; fi
+if [ ${#all[@]} -eq 0 ]; then echo "No visualiser skins in $SKINS. Run: bash $P/vis_install.sh"; exit 1; fi
 case "$1" in
     "")
         show_list ;;
-    next)
-        apply "${all[$(( (idx + 1) % n ))]}"; load; show_list ;;
-    prev)
-        [ $idx -lt 0 ] && idx=0
-        apply "${all[$(( (idx - 1 + n) % n ))]}"; load; show_list ;;
-    random)
-        r=$idx
-        if [ $n -le 1 ]; then r=0; else while [ $r -eq $idx ]; do r=$((RANDOM % n)); done; fi
-        apply "${all[$r]}"; load; show_list ;;
+    next|prev|random)
+        if [ $n -eq 0 ]; then echo "Every visualiser is hidden ('vis unhide' lists them)."; exit 1; fi
+        case "$1" in
+            next) t="${shown[$(( (idx + 1) % n ))]}" ;;
+            prev) [ $idx -lt 0 ] && idx=0; t="${shown[$(( (idx - 1 + n) % n ))]}" ;;
+            random)
+                r=$idx
+                if [ $n -le 1 ]; then r=0; else while [ $r -eq $idx ]; do r=$((RANDOM % n)); done; fi
+                t="${shown[$r]}" ;;
+        esac
+        apply "$t"; load; show_list ;;
     off)
         if [ $on -eq 1 ]; then sudo systemctl restart rpf-display; echo "Back to the meters."
         else echo "The meters are already on screen."; fi ;;
+    hide)
+        if [ -n "$2" ]; then
+            if ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt 1 ] || [ "$2" -gt $n ]; then echo "No visualiser number $2 (1-$n)."; exit 1; fi
+            t="${shown[$(( $2 - 1 ))]}"
+        else
+            if [ $known -eq 0 ]; then echo "No visualiser chosen yet. Use 'vis hide N'."; exit 1; fi
+            t="$current"
+        fi
+        if grep -qxF -- "$t" "$HIDE" 2>/dev/null; then echo "Already hidden: $t"; exit 0; fi
+        echo "$t" >> "$HIDE"
+        echo "Hidden: $t  (numbers have changed - run 'vis' to see the new list)" ;;
+    unhide)
+        if [ -z "$2" ]; then
+            [ ${#hidden[@]} -eq 0 ] && echo "Nothing hidden."
+            for i in "${!hidden[@]}"; do printf '  %3d  %s\n' $((i + 1)) "${hidden[$i]}"; done
+            [ ${#hidden[@]} -gt 0 ] && echo "       'vis unhide N' puts one back in the list."
+        else
+            if ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -lt 1 ] || [ "$2" -gt ${#hidden[@]} ]; then echo "No hidden visualiser number $2 (see 'vis unhide')."; exit 1; fi
+            t="${hidden[$(( $2 - 1 ))]}"
+            grep -vxF -- "$t" "$HIDE" > "$HIDE.tmp"; mv "$HIDE.tmp" "$HIDE"
+            echo "Unhidden: $t  (run 'vis' to see its number)"
+        fi ;;
     strip)
-        if [ $idx -lt 0 ]; then echo "No visualiser chosen yet. Run 'vis' to list them."; exit 1; fi
+        if [ $known -eq 0 ]; then echo "No visualiser chosen yet. Run 'vis' to list them."; exit 1; fi
         now=$(awk -F'\t' -v k="$current" '$1 == k { print $2 }' "$STRIPF")
         if [ -z "$2" ]; then echo "$current: strip = ${now:-default (on under 720 skins, off over full-screen ones)}"; exit 0; fi
         case "$2" in clear|dim|black|off) ;; *) echo "Usage: vis strip [clear|dim|black|off]"; exit 1 ;; esac
@@ -117,7 +155,7 @@ case "$1" in
         want="$*"
         if [[ "$want" =~ ^[0-9]+$ ]]; then
             if [ "$want" -lt 1 ] || [ "$want" -gt $n ]; then echo "No visualiser number $want (1-$n)."; exit 1; fi
-            t="${all[$((want - 1))]}"
+            t="${shown[$((want - 1))]}"
         else
             t=""
             for s in "${all[@]}"; do [ "$s" = "$want" ] && t="$s"; done

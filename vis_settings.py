@@ -22,6 +22,7 @@ SKINS_DIR = os.path.join(BASE_DIR, "vis_skins")           # spectrum skins (made
 RUN_DIR = os.path.join(BASE_DIR, "vis_run")               # generated PeppySpectrum config.txt lives here
 CURRENT_FILE = os.path.join(BASE_DIR, "vis_current.txt")  # the chosen visualiser: FOLDER/NAME
 STRIP_FILE = os.path.join(BASE_DIR, "vis_strip.txt")      # per-skin strip mode (vis strip)
+HIDDEN_FILE = os.path.join(BASE_DIR, "vis_hidden.txt")    # hidden skins (vis hide / unhide)
 
 # One FIFO per bar count: the display creates /tmp/rpf_spectrum_<bars> and reads it;
 # the audio hub finds it by name and sends frames of that many bars. No other coordination.
@@ -31,6 +32,7 @@ MAX_BARS = 128
 
 DEFAULTS = {
     "spectrum_fps": "60",        # spectrum frames sent per second (the display polls at display_fps)
+    "analysis_fps": "30",        # times per second the audio is re-analysed (frames in between reuse the last result)
     "display_fps": "30",         # screen updates per second for visualisers
     "fft_size": "4096",          # samples analysed per frame (4096 at 44.1 kHz = 93 ms, 10.8 Hz resolution)
     "freq_low": "40",            # Hz, left edge of the first bar

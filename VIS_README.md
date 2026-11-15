@@ -23,7 +23,7 @@ project is edited.
 | `VIS_README.md` | this file |
 
 Created on the Pi by the installer: `PeppySpectrum/` (cloned), `vis_skins/`, `vis_run/`,
-`vis_current.txt`, `vis_strip.txt`.
+`vis_current.txt`, `vis_strip.txt`, `vis_hidden.txt`.
 
 System changes made by `vis_install.sh` (all undone by `vis_uninstall.sh`):
 
@@ -47,11 +47,17 @@ Needs a working Roon PeppyMeter Frame (installed with `install.sh`). Copy the ei
     vis 8            show number 8
     vis next         next one (also prev, random)
     vis strip dim    strip for the current visualiser: clear, dim, black or off
+    vis hide 3       take number 3 out of the list (vis hide = the selected one)
+    vis unhide       list the hidden ones; vis unhide 2 puts one back
     vis off          back to the meters (any 'meter' switch does the same)
     vis --help
 
-Skins in the `1920x720` folder leave room for the strip underneath. Skins in the
-`1920x1080` folder fill the screen with the strip off; turning it on covers the bottom.
+Skins in the `1920x720` folder leave room for the strip underneath, so the bars and the
+now-playing details are both in full view.
+
+Skins in the `1920x1080` folder fill the whole screen with bars and have no strip. They
+start hidden: `vis unhide` lists them. Turning the strip on over one covers the bottom
+of its bars, so for bars with a strip use the `1920x720` version of the same look.
 
 ## Settings
 
@@ -59,6 +65,7 @@ Optional. Add a `[vis]` section to `settings.conf`; the defaults are:
 
     [vis]
     spectrum_fps = 60          # spectrum frames sent per second
+    analysis_fps = 30          # times per second the audio is re-analysed
     display_fps = 30           # screen updates per second
     fft_size = 4096            # samples analysed per frame
     freq_low = 40              # Hz, first bar
@@ -84,8 +91,7 @@ two folders.
 
 - After a reboot the meters come back; run `vis N` again.
 - `vis` turns the meter slideshow off (it would keep switching back to the meters).
-- No hide/unhide or slideshow for visualisers yet.
-- With the strip switched on over a full-screen skin, the strip hides the bottom of the bars.
+- No slideshow for visualisers yet.
 - Spectrum levels were tuned on test signals, not on real music from the capture device.
 
 ## Credits
