@@ -44,7 +44,7 @@ STARTUP_TIMEOUT = 30
 APPINFO = {
     "extension_id": "com.softcox.roonpeppymeterframe",
     "display_name": S.get("roon", "extension_name") or "Frame Display Bridge",
-    "display_version": "2.0.0",
+    "display_version": "2.1.0",
     "publisher": "SoftCox Developments",
     "email": "",
     "website": "https://github.com/SoftCox-Developments/roon-peppymeter-frame",

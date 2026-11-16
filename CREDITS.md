@@ -16,6 +16,14 @@ It is used unmodified too. `vis_install.sh` downloads it from its own repository
 
 The spectrum skins that come with the visualiser extension are this project's own, made by `vis_make_skins.py`.
 
+The **meter + spectrum designs** are by **Gelo5**, made for the PeppyMeter screensaver plugin for Volumio (by 2aCD, later foonerd). `vis_install.sh` downloads them from the community template collection that foonerd maintains:
+
+**https://github.com/foonerd/glass_templates**
+
+They are not included in this project and all rights in them remain with their authors. `vis_hybrid_display.py` reads the extra settings those designs carry (where the cover art, text and time go); how the plugin treats those settings was learned from its source, but none of its code is used.
+
+The digital time display on those designs uses the [DSEG](https://github.com/keshikan/DSEG) font by **keshikan**, SIL Open Font License 1.1, also downloaded at install.
+
 ## The meter designs (skins)
 
 The skins are by **Gelo5** (the Gelo5-BASIC sets) and **balbuze** (the circular and linear sets), from the PeppyMeterBasic collection that balbuze maintains for Volumio:

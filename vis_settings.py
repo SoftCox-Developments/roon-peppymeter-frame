@@ -23,6 +23,8 @@ RUN_DIR = os.path.join(BASE_DIR, "vis_run")               # generated PeppySpect
 CURRENT_FILE = os.path.join(BASE_DIR, "vis_current.txt")  # the chosen visualiser: FOLDER/NAME
 STRIP_FILE = os.path.join(BASE_DIR, "vis_strip.txt")      # per-skin strip mode (vis strip)
 HIDDEN_FILE = os.path.join(BASE_DIR, "vis_hidden.txt")    # hidden skins (vis hide / unhide)
+HYBRID_DIR = os.path.join(BASE_DIR, "vis_hybrid")         # meter + spectrum skin packs (downloaded by vis_install.sh)
+FONT_DIR = os.path.join(BASE_DIR, "vis_fonts")            # the digital-clock font for those skins
 
 # One FIFO per bar count: the display creates /tmp/rpf_spectrum_<bars> and reads it;
 # the audio hub finds it by name and sends frames of that many bars. No other coordination.
@@ -43,6 +45,9 @@ DEFAULTS = {
     "gain_db": "0",              # raise or lower all bars
     "attack": "0.7",             # 0-1: how fast bars rise (1 = instantly)
     "fall_time": "0.5",          # seconds for a full bar to fall to nothing
+    "format_image": "",          # meter + spectrum skins: picture for the format badge box (blank = leave empty)
+    "format_text": "",           # meter + spectrum skins: text for the resolution box, e.g. DSD 1024
+    "time_display": "remaining", # meter + spectrum skins: time box shows remaining or elapsed time
 }
 
 
@@ -51,6 +56,9 @@ class VisSettings:
         self._c = configparser.ConfigParser(interpolation=None)
         self._c.read_dict({"vis": DEFAULTS})
         self._c.read(rpf_settings.SETTINGS_FILE, encoding="utf-8")
+
+    def get(self, key):
+        return self._c.get("vis", key).strip()
 
     def getfloat(self, key):
         try:
@@ -64,6 +72,14 @@ class VisSettings:
 
 def load():
     return VisSettings()
+
+
+def hybrid_pack(folder):
+    """The pack folder holding meter + spectrum skin folder `folder`, or None."""
+    import glob
+    for path in sorted(glob.glob(os.path.join(HYBRID_DIR, "*", "templates", folder, "meters.txt"))):
+        return os.path.dirname(os.path.dirname(os.path.dirname(path)))
+    return None
 
 
 def spectrum_pipe(bars):

@@ -4,6 +4,13 @@ Adds a `vis` command that shows a spectrum analyser on the display instead of th
 meters, with the same now-playing strip and paused screen. Any `meter` switch (or
 `vis off`) brings the meters back.
 
+Two kinds of visualiser are listed by `vis`:
+
+- **Spectrum bars** (folders ending in `-rpf-spectrum`): bars above the now-playing strip.
+- **Meter + spectrum designs** by Gelo5 (names with `S+M` or `Spectrum`): needles and
+  bars together in one design, with the cover art, title, artist, album and time placed
+  by the design itself. See [Meter + spectrum designs](#meter--spectrum-designs).
+
 ## What is what
 
 Everything belonging to the extension is named `vis...`. The meter programs are not
@@ -14,12 +21,14 @@ edited.
 | `vis` | the command (installed to `/usr/local/bin/vis`) |
 | `vis_audio_hub.py` | replaces `audio_bridge.py` while the extension is installed: same meter feed, plus spectrum data on request |
 | `vis_spectrum_display.py` | runs unmodified PeppySpectrum with the strip from `frame_display.py` |
+| `vis_hybrid_display.py` | runs the meter + spectrum designs: unmodified PeppyMeter and PeppySpectrum together |
 | `vis_make_skins.py` | writes the extension's own spectrum skins into `vis_skins/` |
 | `vis_settings.py` | paths and the optional `[vis]` settings |
 | `vis_install.sh`, `vis_uninstall.sh` | add / remove the extension |
 | `VIS_README.md` | this file |
 
-Created on the Pi by the installer: `PeppySpectrum/` (cloned), `vis_skins/`, `vis_run/`,
+Created on the Pi by the installer: `PeppySpectrum/` (cloned), `vis_skins/`, `vis_hybrid/`
+and `vis_fonts/` (downloaded), `vis_run/`,
 `vis_current.txt`, `vis_strip.txt`, `vis_hidden.txt`.
 
 System changes made by `vis_install.sh` (all undone by `vis_uninstall.sh`):
@@ -46,6 +55,9 @@ folder:
     vis strip dim    strip for the current visualiser: clear, dim, black or off
     vis hide 3       take number 3 out of the list (vis hide = the selected one)
     vis unhide       list the hidden ones; vis unhide 2 puts one back
+
+The list grows long with the meter + spectrum designs. Hiding the ones you don't use
+keeps `vis`, `vis next` and `vis random` to your favourites; nothing is deleted.
     vis off          back to the meters (any 'meter' switch does the same)
     vis --help
 
@@ -55,6 +67,37 @@ now-playing details are both in full view.
 Skins in the `1920x1080` folder fill the whole screen with bars and have no strip. They
 start hidden: `vis unhide` lists them. Turning the strip on over one covers the bottom
 of its bars, so for bars with a strip use the `1920x720` version of the same look.
+
+## Meter + spectrum designs
+
+Twenty full-screen designs by Gelo5, made for the PeppyMeter screensaver plugin for
+Volumio, in which a spectrum analyser sits beside or instead of the needles. The
+installer downloads them (about 30 MB) from the community template collection; they are
+not part of this project.
+
+They don't use the now-playing strip. Each design has its own places for the cover art,
+title, artist, album and a digital time display, plus two small boxes that on Volumio
+show the file format and resolution. Roon doesn't pass those on, so here:
+
+| Box | Shows |
+|-----|-------|
+| Time | time remaining for tracks (`time_display = elapsed` for elapsed time); the time of day (24 hour) for radio and anything else without a length |
+| Format badge | a picture of your choice: `format_image` in `settings.conf` |
+| Resolution | a text of your choice: `format_text` in `settings.conf`, for example what your DAC is being sent |
+
+Both boxes stay empty until you set them:
+
+    [vis]
+    format_image = my_badge.png
+    format_text = DSD 1024
+
+`format_image` is a PNG or JPEG, either a full path or a file name in the install
+folder. It is scaled to fit the design's badge box (between about 55 and 130 pixels
+square), so a square picture of 256 pixels or so with a transparent background works
+well. Then run `vis N` again.
+
+Paused shows the same large cover art as the meters do. `vis strip` does not apply to
+these designs, and `meter shift` has no effect on them.
 
 ## Settings
 
@@ -73,6 +116,9 @@ Optional. Add a `[vis]` section to `settings.conf`; the defaults are:
     gain_db = 0                # raise or lower all bars
     attack = 0.7               # 0-1, how fast bars rise
     fall_time = 0.5            # seconds for a full bar to fall
+    format_image =             # meter + spectrum designs: picture for the format badge box
+    format_text =              # meter + spectrum designs: text for the resolution box
+    time_display = remaining   # meter + spectrum designs: remaining or elapsed
 
 After a change: `sudo systemctl restart rpf-audio` (and `vis N` again for display_fps).
 If the bars sit too low or hit the top on your music, change `gain_db` first.
@@ -91,6 +137,10 @@ two folders.
 - No slideshow for visualisers yet.
 
 ## Credits
+
+The meter + spectrum designs are by Gelo5, from the community template collection kept
+by foonerd (https://github.com/foonerd/glass_templates). The digital time display uses
+the DSEG font by keshikan (SIL Open Font License). Both are downloaded at install.
 
 PeppySpectrum by peppy.player (https://github.com/project-owner/PeppySpectrum),
 GPL-3.0-or-later, used unmodified and downloaded at install. The spectrum data format
