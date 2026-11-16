@@ -55,6 +55,9 @@ folder:
     vis strip dim    strip for the current visualiser: clear, dim, black or off
     vis hide 3       take number 3 out of the list (vis hide = the selected one)
     vis unhide       list the hidden ones; vis unhide 2 puts one back
+
+The list grows long with the meter + spectrum designs. Hiding the ones you don't use
+keeps `vis`, `vis next` and `vis random` to your favourites; nothing is deleted.
     vis off          back to the meters (any 'meter' switch does the same)
     vis --help
 

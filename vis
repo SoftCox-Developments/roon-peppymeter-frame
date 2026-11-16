@@ -49,6 +49,8 @@ Notes:
   hidden: 'vis unhide' lists them. Turning the strip on over one covers the bottom of
   its bars, so for bars with a strip use the 1920x720 version of the same look.
   The strip setting is remembered for each visualiser.
+  The list is long: hide the ones you don't use ('vis hide N') and next, prev and
+  random will skip them. Nothing is deleted; 'vis unhide' brings them back.
   After a reboot the display starts with the meters; 'vis N' brings a visualiser back.
   The meter slideshow would keep switching back to the meters, so 'vis' turns it off.
 
@@ -101,6 +103,7 @@ show_list() {
         printf '%s %3d  %s\n' "$mark" $((i + 1)) "${shown[$i]}"
     done
     [ ${#hidden[@]} -gt 0 ] && echo "       (${#hidden[@]} hidden - 'vis unhide' lists them)"
+    [ $n -gt 15 ] && echo "       Tip: a long list - 'vis hide N' takes out the ones you don't use"
     if [ $on -eq 1 ]; then
         [ $idx -lt 0 ] && echo "       Showing: $current (hidden)"
         echo "       On screen: visualiser ('vis off' or any 'meter' switch returns to the meters)"

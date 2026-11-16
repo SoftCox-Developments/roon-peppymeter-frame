@@ -170,6 +170,7 @@ vis --help            everything else
 - Seven looks come with it, from 20 wide bars to 96 fine ones, some with falling peak markers.
 - **Meter + spectrum designs** (new in 2.1): twenty of Gelo5's full-screen designs with needles and a spectrum together, and the cover art, title and time built into the design. They are in the same `vis` list.
 - Full-screen versions with no strip are hidden to begin with. `vis unhide` lists them.
+- The list is long: 27 entries once the meter + spectrum designs are in. Hide the ones you don't use with `vis hide N` so that `vis next` and `vis random` only visit your favourites. Nothing is deleted, and `vis unhide` brings them back.
 - After a restart of the Pi the meters come back. `vis 1` returns to the bars.
 - It uses a little more of the Pi's processor than the meters do (measured: under half of one core in all).
 
