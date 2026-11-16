@@ -156,6 +156,7 @@ class Overlay:
         self.art_key = None
         self.big_art = None
         self.last_second = None
+        self.clock = None            # (seconds shown, monotonic time, track + state) - see position()
         self.dirty = True
 
     def capture_background(self, mode="clear"):
@@ -174,12 +175,28 @@ class Overlay:
         return self.info.get("state", "stopped")
 
     def position(self):
-        """(elapsed, length) for finite tracks, else None (radio, unknown)."""
+        """(elapsed, length) for finite tracks, else None (radio, unknown).
+
+        Roon reports whole seconds, about once a second but not on the second, so
+        counting on from each report alone makes the time step back or skip now and
+        then. Instead a clock of our own runs smoothly while playing and only takes
+        Roon's figure when it is ahead (catching up) or more than 2 s away (a seek, a
+        new track).
+        """
         pos, length = self.info.get("position"), self.info.get("length")
         if pos is None or not length or length <= 0:
+            self.clock = None
             return None
-        if self.state() == "playing":
+        playing = self.state() == "playing"
+        if playing:
             pos += time.time() - self.info.get("updated", time.time())
+        now = time.monotonic()
+        key = (self.info.get("title"), self.info.get("artist"), self.info.get("album"), playing)
+        if playing and self.clock and self.clock[2] == key:
+            ours = self.clock[0] + (now - self.clock[1])
+            if abs(pos - ours) < 2.0:
+                pos = max(pos, ours)
+        self.clock = (pos, now, key)
         return min(max(pos, 0), length), length
 
     def tick(self):
