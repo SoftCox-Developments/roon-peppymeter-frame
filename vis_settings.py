@@ -53,7 +53,7 @@ DEFAULTS = {
     "hifi_gain_db": "0",         # hi-fi displays: enlarge (+) or shrink (-) the picture of the signal
     "scope_ms": "20",            # oscilloscope: milliseconds of sound across the screen
     "gonio_decay": "0.86",       # goniometer: how much of the glow survives each frame (0.3 - 0.98)
-    "waterfall_seconds": "20",   # waterfall: seconds of sound across the screen
+    "waterfall_seconds": "12",   # waterfall: seconds of sound across the screen
 }
 
 

@@ -101,6 +101,9 @@ class Oscilloscope:
         self.rows = [(area.y + half // 2, (90, 255, 170)), (area.y + half + half // 2, (255, 190, 70))]
         self.amp = (half / 2 - 14) / 32768.0 * GAIN
         self.trails = [[], []]
+        self.kernel = np.ones(48, dtype=np.float32) / 48      # about 1 ms: smooths the trigger signal
+        self.look = 40
+        self.last = self.win // 2
         f = font(26)
         self.labels = [f.render("L", True, LABEL), f.render("R", True, LABEL)]
 
@@ -113,12 +116,22 @@ class Oscilloscope:
             x = a.x + a.w * i // 10
             pygame.draw.line(s, GRID, (x, a.y + 6), (x, a.bottom - 6))
         pygame.draw.line(s, GRID, (a.x, a.centery), (a.right, a.centery))
-        # trigger: the last rising zero crossing of the sum that still leaves a full window after it
+        # Trigger, so the picture holds still: start the sweep where the smoothed signal (which
+        # follows the bass and ignores treble wiggles) crosses zero going up. Of the crossings
+        # on offer take the one with the biggest swing after it, and if the place found last
+        # frame's distance away is nearly as good, stay there - fewer sideways jumps.
         mono = audio.left + audio.right
         lo, hi = len(mono) - 2 * self.win, len(mono) - self.win
-        seg = mono[lo:hi]
-        cross = np.nonzero((seg[:-1] < 0) & (seg[1:] >= 0))[0]
-        start = lo + (int(cross[-1]) + 1 if len(cross) else self.win - 1)
+        smooth = np.convolve(mono[lo - 64:hi + 64], self.kernel, mode="same")[64:-64]
+        cross = np.nonzero((smooth[:-1] < 0) & (smooth[1:] >= 0))[0]
+        if len(cross):
+            ahead = np.minimum(cross + self.look, len(smooth) - 1)
+            swing = smooth[ahead] - smooth[np.maximum(cross - self.look, 0)]
+            best = int(np.argmax(swing))
+            near = int(np.argmin(np.abs(cross - self.last)))
+            pick = near if swing[near] >= 0.8 * swing[best] else best
+            self.last = int(cross[pick])
+        start = lo + self.last + 1
         for k, (ch, (cy, colour)) in enumerate(zip((audio.left, audio.right), self.rows)):
             y = np.clip(cy - ch[start:start + self.win] * self.amp, a.y, a.bottom - 1)
             pts = np.column_stack((self.x, y)).tolist()
@@ -147,7 +160,7 @@ class Goniometer:
                                if v else (0, 0, 0) for v in range(256)])
         decay = min(0.98, max(0.3, V.getfloat("gonio_decay")))
         self.lut = (np.arange(256) * decay).astype(np.uint8)
-        self.k = 0.95 * side / (4 * 32768.0) * GAIN
+        self.k = 1.8 * side / (4 * 32768.0) * GAIN      # music rarely nears full scale on both channels at once
         self.corr = 0.0
         f = font(24)
         self.text = {t: f.render(t, True, LABEL) for t in ("L", "R", "M", "+1", "0", "-1", "PHASE")}
@@ -227,8 +240,9 @@ class Waterfall:
 
     @staticmethod
     def palette():
-        stops = [(0, (0, 0, 0)), (40, (10, 0, 60)), (95, (95, 0, 150)), (150, (215, 40, 90)),
-                 (200, (255, 150, 20)), (238, (255, 235, 110)), (255, (255, 255, 255))]
+        # black, then blues bright enough to see against it, purple, red, orange, yellow, white
+        stops = [(0, (0, 0, 0)), (25, (20, 25, 95)), (70, (40, 80, 205)), (115, (150, 55, 190)), (160, (230, 60, 90)),
+                 (205, (255, 160, 30)), (238, (255, 235, 110)), (255, (255, 255, 255))]
         out = []
         for v in range(256):
             for (a, ca), (b, cb) in zip(stops, stops[1:]):

@@ -135,7 +135,7 @@ Optional. Add a `[vis]` section to `settings.conf`; the defaults are:
     hifi_gain_db = 0           # hi-fi displays: enlarge (+) or shrink (-) the picture of the signal
     scope_ms = 20              # oscilloscope: milliseconds of sound across the screen
     gonio_decay = 0.86         # goniometer: how much glow survives each frame (0.3 - 0.98)
-    waterfall_seconds = 20     # waterfall: seconds of sound across the screen
+    waterfall_seconds = 12     # waterfall: seconds of sound across the screen
 
 After a change: `sudo systemctl restart rpf-audio` (and `vis N` again for display_fps).
 If the bars sit too low or hit the top on your music, change `gain_db` first.
