@@ -68,6 +68,19 @@ Skins in the `1920x1080` folder fill the whole screen with bars and have no stri
 start hidden: `vis unhide` lists them. Turning the strip on over one covers the bottom
 of its bars, so for bars with a strip use the `1920x720` version of the same look.
 
+## Hi-fi displays
+
+Three displays drawn from the audio itself (`vis_hifi_display.py`), listed as `hifi/...`:
+
+| Display | What it shows |
+|---------|---------------|
+| `hifi/Oscilloscope` | the waveform of the left and right channels |
+| `hifi/Goniometer` | the stereo image: mono is a vertical line, wide stereo fills out, out-of-phase sound lies sideways; the PHASE meter beside it reads +1 for mono, 0 for unrelated channels, below 0 for out of phase |
+| `hifi/Waterfall` | the spectrum scrolling right to left: pitch from bottom to top, brightness is loudness |
+
+They sit above the now-playing strip; `vis strip off` gives them the whole screen. Nothing
+adjusts itself to the music: a quiet recording looks quiet.
+
 ## Meter + spectrum designs
 
 Twenty full-screen designs by Gelo5, made for the PeppyMeter screensaver plugin for
@@ -119,6 +132,10 @@ Optional. Add a `[vis]` section to `settings.conf`; the defaults are:
     format_image =             # meter + spectrum designs: picture for the format badge box
     format_text =              # meter + spectrum designs: text for the resolution box
     time_display = remaining   # meter + spectrum designs: remaining or elapsed
+    hifi_gain_db = 0           # hi-fi displays: enlarge (+) or shrink (-) the picture of the signal
+    scope_ms = 20              # oscilloscope: milliseconds of sound across the screen
+    gonio_decay = 0.86         # goniometer: how much glow survives each frame (0.3 - 0.98)
+    waterfall_seconds = 20     # waterfall: seconds of sound across the screen
 
 After a change: `sudo systemctl restart rpf-audio` (and `vis N` again for display_fps).
 If the bars sit too low or hit the top on your music, change `gain_db` first.
