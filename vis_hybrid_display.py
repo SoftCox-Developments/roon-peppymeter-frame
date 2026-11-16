@@ -19,8 +19,8 @@ playinfo.title.pos, time.remaining.pos, spectrum.name, ...), which this program 
 It does not use the now-playing strip: the skin has its own places for the details.
 
 What goes in the skin's boxes:
-  time box        elapsed time for tracks; the time of day (24 hour) for radio and
-                  anything else without a length
+  time box        time remaining for tracks (or elapsed: time_display = elapsed); the
+                  time of day (24 hour) for radio and anything else without a length
   format badge    the picture named by format_image in [vis] of settings.conf
   resolution      the text given by format_text there, e.g. DSD 1024
 Both are left empty when not set.
@@ -30,6 +30,7 @@ Started by vis_spectrum_display.py when the chosen visualiser is one of these sk
 """
 import configparser
 import glob
+import math
 import os
 import re
 import sys
@@ -156,6 +157,7 @@ class Hybrid:
         self.meter_on = flag(self.skin.get("meter.visible", "True"))
         self.spec_on = flag(self.skin.get("spectrum.visible", "False")) and self.skin.get("spectrum.name")
         self.overlay = Overlay(self.screen, default_strip())      # reads Roon's details; draws the paused screen
+        self.remaining = V.get("time_display").lower() != "elapsed"
         self.art_key = None
         self.art = None
         self.fgr = None
@@ -326,7 +328,11 @@ class Hybrid:
         if key == "time":
             p = self.overlay.position()
             if p:
-                m, sec = divmod(int(p[0]), 60)
+                if self.remaining:
+                    secs = math.ceil(p[1] - p[0])       # counts down to 00:00 as the track ends
+                else:
+                    secs = int(p[0])
+                m, sec = divmod(max(0, secs), 60)
                 return f"{m:02}:{sec:02}"
             return time.strftime("%H:%M")
         if key == "art":

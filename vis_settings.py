@@ -47,6 +47,7 @@ DEFAULTS = {
     "fall_time": "0.5",          # seconds for a full bar to fall to nothing
     "format_image": "",          # meter + spectrum skins: picture for the format badge box (blank = leave empty)
     "format_text": "",           # meter + spectrum skins: text for the resolution box, e.g. DSD 1024
+    "time_display": "remaining", # meter + spectrum skins: time box shows remaining or elapsed time
 }
 
 

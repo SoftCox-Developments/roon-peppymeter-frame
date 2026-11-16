@@ -78,7 +78,7 @@ show the file format and resolution. Roon doesn't pass those on, so here:
 
 | Box | Shows |
 |-----|-------|
-| Time | elapsed time for tracks; the time of day (24 hour) for radio and anything else without a length |
+| Time | time remaining for tracks (`time_display = elapsed` for elapsed time); the time of day (24 hour) for radio and anything else without a length |
 | Format badge | a picture of your choice: `format_image` in `settings.conf` |
 | Resolution | a text of your choice: `format_text` in `settings.conf`, for example what your DAC is being sent |
 
@@ -115,6 +115,7 @@ Optional. Add a `[vis]` section to `settings.conf`; the defaults are:
     fall_time = 0.5            # seconds for a full bar to fall
     format_image =             # meter + spectrum designs: picture for the format badge box
     format_text =              # meter + spectrum designs: text for the resolution box
+    time_display = remaining   # meter + spectrum designs: remaining or elapsed
 
 After a change: `sudo systemctl restart rpf-audio` (and `vis N` again for display_fps).
 If the bars sit too low or hit the top on your music, change `gain_db` first.
