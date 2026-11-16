@@ -76,6 +76,7 @@ Three displays drawn from the audio itself (`vis_hifi_display.py`), listed as `h
 |---------|---------------|
 | `hifi/Oscilloscope` | the waveform of the left and right channels |
 | `hifi/Goniometer` | the stereo image: mono is a vertical line, wide stereo fills out, out-of-phase sound lies sideways; the PHASE meter beside it reads +1 for mono, 0 for unrelated channels, below 0 for out of phase |
+| `hifi/Goniometer + Oscilloscope` | the two side by side |
 | `hifi/Waterfall` | the spectrum scrolling right to left: pitch from bottom to top, brightness is loudness |
 
 They sit above the now-playing strip; `vis strip off` gives them the whole screen. Nothing

@@ -12,6 +12,7 @@
   hifi/Oscilloscope   the waveform of the left and right channels, as on a scope
   hifi/Goniometer     the stereo image (vectorscope): mono is a vertical line, wide stereo
                       fills out, out-of-phase sound lies sideways; with a phase meter
+  hifi/Goniometer + Oscilloscope   both, side by side
   hifi/Waterfall      the spectrum scrolling by: time runs right to left, pitch bottom to
                       top, brightness is loudness - notes, tunes and drum hits become shapes
 
@@ -35,7 +36,7 @@ import numpy as np
 import pygame
 from pygame.time import Clock
 
-NAMES = ("Oscilloscope", "Goniometer", "Waterfall")
+NAMES = ("Oscilloscope", "Goniometer", "Goniometer + Oscilloscope", "Waterfall")
 V = vis_settings.load()
 FPS = max(5, V.getint("display_fps"))
 RATE = 44100
@@ -152,20 +153,21 @@ class Goniometer:
 
     def __init__(self, screen, area):
         self.screen, self.area = screen, area
-        self.side = side = min(area.h - 40, area.w - 400) // 2 * 2
-        self.pane_rect = pygame.Rect(0, 0, side, side)
-        self.pane_rect.center = area.center
+        self.side = side = min(area.h - 40, area.w - 230) // 2 * 2
+        # the square and the phase meter to its right, centred together in the area
+        self.pane_rect = pygame.Rect(area.x + (area.w - side - 170) // 2, area.centery - side // 2, side, side)
         self.pane = pygame.Surface((side, side), 0, 8)
         self.pane.set_palette([(int(20 * min(1, v / 60)), min(255, int(v * 1.15)), int(60 + v * 0.55) if v else 0)
                                if v else (0, 0, 0) for v in range(256)])
         decay = min(0.98, max(0.3, V.getfloat("gonio_decay")))
         self.lut = (np.arange(256) * decay).astype(np.uint8)
-        self.k = 1.8 * side / (4 * 32768.0) * GAIN      # music rarely nears full scale on both channels at once
+        self.k = 1.62 * side / (4 * 32768.0) * GAIN     # music rarely nears full scale on both channels at once
         self.corr = 0.0
         f = font(24)
         self.text = {t: f.render(t, True, LABEL) for t in ("L", "R", "M", "+1", "0", "-1", "PHASE")}
-        self.meter = pygame.Rect(self.pane_rect.right + 90, self.pane_rect.y + 40, 26, side - 80)
-        self.dirty = self.pane_rect.union(self.meter.inflate(120, 90)).clip(area)
+        self.meter = pygame.Rect(self.pane_rect.right + 60, self.pane_rect.y + 20, 26, side - 80)
+        self.meter_area = pygame.Rect(self.meter.x - 12, self.pane_rect.y, 122, side).clip(area)
+        self.dirty = self.pane_rect.union(self.meter_area)
         self.first = True
 
     def draw(self, audio):
@@ -200,7 +202,7 @@ class Goniometer:
         target = float(np.dot(l, r)) / power if power > 1e3 else 0.0
         self.corr += (target - self.corr) * 0.25
         m = self.meter
-        s.fill(BLACK, m.inflate(120, 90).clip(self.area))
+        s.fill(BLACK, self.meter_area)
         pygame.draw.rect(s, GRID, m, 1)
         h = int((m.h // 2 - 2) * abs(self.corr))
         if self.corr >= 0:
@@ -216,6 +218,24 @@ class Goniometer:
             self.first = False
             return [self.area]
         return [self.dirty]
+
+    def reset(self):
+        self.first = True
+
+
+class Combined:
+    """Goniometer on the left, oscilloscope on the right."""
+
+    def __init__(self, screen, area):
+        left_w = min(area.h + 190, area.w // 2)
+        self.gonio = Goniometer(screen, pygame.Rect(area.x, area.y, left_w, area.h))
+        self.scope = Oscilloscope(screen, pygame.Rect(area.x + left_w, area.y, area.w - left_w, area.h))
+
+    def draw(self, audio):
+        return self.gonio.draw(audio) + self.scope.draw(audio)
+
+    def reset(self):
+        self.gonio.reset()
 
 
 class Waterfall:
@@ -293,7 +313,8 @@ def main():
     if mode != "off":
         overlay.capture_background(mode)
     audio = Audio()
-    display = {"Oscilloscope": Oscilloscope, "Goniometer": Goniometer, "Waterfall": Waterfall}[name](screen, area)
+    display = {"Oscilloscope": Oscilloscope, "Goniometer": Goniometer, "Goniometer + Oscilloscope": Combined,
+               "Waterfall": Waterfall}[name](screen, area)
     print(f"Hi-fi display '{name}': area {tuple(area)}, strip {mode}, {FPS} fps", flush=True)
     pygame.display.update(full)
 
@@ -314,8 +335,8 @@ def main():
                 paused_view = True
         elif paused_view:
             screen.fill(BLACK)
-            if hasattr(display, "first"):
-                display.first = True
+            if hasattr(display, "reset"):
+                display.reset()
             display.draw(audio)
             overlay.dirty = True
             if mode != "off":
