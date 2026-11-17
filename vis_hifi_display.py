@@ -12,7 +12,8 @@
   hifi/Oscilloscope   the waveform of the left and right channels, as on a scope
   hifi/Goniometer     the stereo image (vectorscope): mono is a vertical line, wide stereo
                       fills out, out-of-phase sound lies sideways; with a phase meter
-  hifi/Goniometer + Oscilloscope   both, side by side
+  hifi/Goniometer + Oscilloscope   the goniometer beside the two scope traces and a
+                      24-bar spectrum coloured like a level meter
   hifi/Waterfall      the spectrum scrolling by: time runs right to left, pitch bottom to
                       top, brightness is loudness - notes, tunes and drum hits become shapes
 
@@ -144,7 +145,7 @@ class Oscilloscope:
             trail.append(pts)
             if len(trail) > 2:
                 trail.pop(0)
-            s.blit(self.labels[k], (a.x + 16, cy - (a.h // 4) + 10))
+            s.blit(self.labels[k], (a.x + 16, cy - (a.h // 4) + 6))
         return [a]
 
 
@@ -223,16 +224,90 @@ class Goniometer:
         self.first = True
 
 
+class SpectrumBars:
+    """A mono spectrum of 24 bars, coloured like a level meter: green deepening to light
+    below -3 dB, yellow from -3 to 0 dB, red above. 0 dB is the level that fills a bar in
+    the spectrum visualisers (db_top in the settings); the scale runs 3 dB past it."""
+
+    BARS = 24
+    OVER = 3.0          # dB shown above 0
+
+    def __init__(self, screen, area):
+        import vis_audio_hub as hub                 # for its band maths, so levels match the spectrum bars
+        self.screen, self.area = screen, area
+        self.bands = hub.Bands(self.BARS, RATE)
+        span = self.bands.span                      # dB from the floor to 0 dB
+        self.bands.span = span + self.OVER
+        self.n = self.bands.n
+        self.levels = np.zeros(self.BARS)
+        self.attack = min(1.0, max(0.05, V.getfloat("attack")))
+        self.fall = 100.0 / (max(0.05, V.getfloat("fall_time")) * FPS)
+        f = font(20)
+        left, bottom = 58, 30
+        self.h = h = area.h - bottom - 14
+        self.base = area.bottom - bottom
+        pitch = (area.w - left - 16) // self.BARS
+        self.bar_w = pitch - max(2, pitch // 5)
+        self.xs = [area.x + left + i * pitch for i in range(self.BARS)]
+        f3, f0 = (span - 3.0) / (span + self.OVER), span / (span + self.OVER)
+        self.column = pygame.Surface((self.bar_w, h))
+        for y in range(h):
+            frac = 1.0 - y / h
+            if frac >= f0:
+                c = (255, 50, 30)
+            elif frac >= f3:
+                c = (255, 220, 0)
+            else:
+                t = frac / f3
+                c = (int(150 * t * t), int(95 + 160 * t), int(45 + 105 * t))
+            pygame.draw.line(self.column, c, (0, y), (self.bar_w, y))
+        self.ticks = []
+        for db in (0, -3, -10, -20, -30, -40):
+            frac = (span + db) / (span + self.OVER)
+            if frac > 0.02:
+                label = f.render(f"{db}", True, LABEL)
+                self.ticks.append((self.base - int(h * frac), label))
+        self.freqs = []
+        centres = np.sqrt(self.bands.edges[:-1] * self.bands.edges[1:])
+        for hz, text in ((100, "100"), (1000, "1k"), (10000, "10k")):
+            i = int(np.argmin(np.abs(centres - hz)))
+            label = f.render(text, True, LABEL)
+            self.freqs.append((self.xs[i] + self.bar_w // 2 - label.get_width() // 2, label))
+        self.db = f.render("dB", True, LABEL)
+
+    def draw(self, audio):
+        s, a = self.screen, self.area
+        mono = (audio.left[-self.n:] + audio.right[-self.n:]) * (0.5 * GAIN)
+        new = self.bands.levels(mono)
+        rising = new > self.levels
+        self.levels[rising] += (new[rising] - self.levels[rising]) * self.attack
+        self.levels[~rising] = np.maximum(new[~rising], self.levels[~rising] - self.fall)
+        s.fill(BLACK, a)
+        for y, label in self.ticks:
+            pygame.draw.line(s, GRID, (self.xs[0] - 8, y), (a.right - 12, y))
+            s.blit(label, (self.xs[0] - 14 - label.get_width(), y - label.get_height() // 2))
+        s.blit(self.db, (a.x + 6, self.base + 6))
+        for x, label in self.freqs:
+            s.blit(label, (x, self.base + 6))
+        for x, level in zip(self.xs, self.levels):
+            hh = int(self.h * level / 100.0)
+            if hh > 0:
+                s.blit(self.column, (x, self.base - hh), (0, self.h - hh, self.bar_w, hh))
+        return [a]
+
+
 class Combined:
-    """Goniometer on the left, oscilloscope on the right."""
+    """Goniometer on the left; on the right the two oscilloscope traces above a spectrum."""
 
     def __init__(self, screen, area):
         left_w = min(area.h + 190, area.w // 2)
+        top_h = area.h // 2
         self.gonio = Goniometer(screen, pygame.Rect(area.x, area.y, left_w, area.h))
-        self.scope = Oscilloscope(screen, pygame.Rect(area.x + left_w, area.y, area.w - left_w, area.h))
+        self.scope = Oscilloscope(screen, pygame.Rect(area.x + left_w, area.y, area.w - left_w, top_h))
+        self.bars = SpectrumBars(screen, pygame.Rect(area.x + left_w, area.y + top_h, area.w - left_w, area.h - top_h))
 
     def draw(self, audio):
-        return self.gonio.draw(audio) + self.scope.draw(audio)
+        return self.gonio.draw(audio) + self.scope.draw(audio) + self.bars.draw(audio)
 
     def reset(self):
         self.gonio.reset()

@@ -158,6 +158,27 @@ class Overlay:
         self.last_second = None
         self.clock = None            # (seconds shown, monotonic time, track + state) - see position()
         self.dirty = True
+        self.badge, self.badge_text = self.load_badge()
+
+    def load_badge(self):
+        """The optional format badge picture and text ([vis] format_image / format_text in
+        settings.conf), shown beside the cover art in the strip. (None, None) when not set."""
+        badge = text = None
+        try:
+            import vis_settings
+            v = vis_settings.load()
+            path, words = v.get("format_image"), v.get("format_text")
+            if path:
+                path = path if os.path.isabs(path) else os.path.join(rpf_settings.BASE_DIR, path)
+                img = pygame.image.load(path).convert_alpha()
+                side = max(48, int(self.play.art * 0.3))
+                k = min(side / img.get_width(), side / img.get_height())
+                badge = pygame.transform.smoothscale(img, (max(1, round(img.get_width() * k)), max(1, round(img.get_height() * k))))
+            if words:
+                text = self.play.fonts["time"].render(words, True, GREY)
+        except Exception as e:
+            print(f"Format badge not shown: {e}", flush=True)
+        return badge, text
 
     def capture_background(self, mode="clear"):
         bg = self.screen.subsurface(self.play.rect).copy()
@@ -253,6 +274,12 @@ class Overlay:
 
         show_small = (not paused) and lay.small_art is not None
         max_w = lay.rect.w - 2 * MARGIN - (lay.art + 40 if show_small else 0)
+        # format badge and text: a column at the top, just left of the cover art
+        extras = [e for e in (self.badge, self.badge_text) if e is not None] if not paused else []
+        if extras:
+            col_w = max(e.get_width() for e in extras)
+            col_right = lay.rect.w - MARGIN - (lay.art + 28 if show_small else 0)
+            max_w -= col_w + 36
         if lay.text is None or lay.text_w != max_w:
             lay.text_w = max_w
             lay.text = []
@@ -276,6 +303,10 @@ class Overlay:
         if show_small:
             r = lay.small_art.get_rect(center=(lay.rect.w - MARGIN - lay.art // 2, lay.art_top + lay.art // 2))
             s.blit(lay.small_art, r)
+        y = lay.art_top
+        for e in extras:
+            s.blit(e, (col_right - e.get_width(), y))
+            y += e.get_height() + 10
 
     def draw_strip(self, areas):
         """Meter view: redraw the strip if needed, and repair it where PeppyMeter repainted needles."""
