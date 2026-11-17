@@ -309,8 +309,8 @@ class Overlay:
             r = lay.small_art.get_rect(center=(lay.rect.w - MARGIN - lay.art // 2, lay.art_top + lay.art // 2))
             s.blit(lay.small_art, r)
         y = col_top if extras else 0
-        for e in extras:
-            s.blit(e, (col_right - e.get_width(), y))
+        for e in extras:                # the badge and its text share a centre line
+            s.blit(e, (col_right - (col_w + e.get_width()) // 2, y))
             y += e.get_height() + 10
 
     def draw_strip(self, areas):
