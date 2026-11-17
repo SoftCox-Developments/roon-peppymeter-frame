@@ -240,6 +240,8 @@ class SpectrumBars:
         self.bands.span = span + self.OVER
         self.n = self.bands.n
         self.levels = np.zeros(self.BARS)
+        self.peaks = np.zeros(self.BARS)                # falling peak markers, as on the spectrum skins
+        self.peak_fall = 8.6 / FPS                      # the same speed: 8.6% of the height a second
         self.attack = min(1.0, max(0.05, V.getfloat("attack")))
         self.fall = 100.0 / (max(0.05, V.getfloat("fall_time")) * FPS)
         f = font(20)
@@ -289,10 +291,14 @@ class SpectrumBars:
         s.blit(self.db, (a.x + 6, self.base + 6))
         for x, label in self.freqs:
             s.blit(label, (x, self.base + 6))
-        for x, level in zip(self.xs, self.levels):
+        self.peaks = np.maximum(self.levels, self.peaks - self.peak_fall)
+        for x, level, peak in zip(self.xs, self.levels, self.peaks):
             hh = int(self.h * level / 100.0)
             if hh > 0:
                 s.blit(self.column, (x, self.base - hh), (0, self.h - hh, self.bar_w, hh))
+            ph = min(self.h - 4, int(self.h * peak / 100.0) + 3)
+            if ph > 6:          # a 4 px marker in the colour of the zone it is in
+                s.blit(self.column, (x, self.base - ph - 4), (0, self.h - ph - 4, self.bar_w, 4))
         return [a]
 
 

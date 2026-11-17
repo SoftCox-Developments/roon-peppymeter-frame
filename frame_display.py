@@ -274,23 +274,28 @@ class Overlay:
 
         show_small = (not paused) and lay.small_art is not None
         max_w = lay.rect.w - 2 * MARGIN - (lay.art + 40 if show_small else 0)
-        # format badge and text: a column at the top, just left of the cover art
+        # format badge and text: a column level with the bottom of the cover art, just left of
+        # it. Text lines above the column keep the full width; those beside it are shortened.
         extras = [e for e in (self.badge, self.badge_text) if e is not None] if not paused else []
+        widths = [max_w] * 3
         if extras:
             col_w = max(e.get_width() for e in extras)
+            col_h = sum(e.get_height() for e in extras) + 10 * (len(extras) - 1)
             col_right = lay.rect.w - MARGIN - (lay.art + 28 if show_small else 0)
+            col_top = lay.art_top + lay.art - col_h
             max_w -= col_w + 36
-        if lay.text is None or lay.text_w != max_w:
-            lay.text_w = max_w
+            widths = [w if y + lay.fonts[k].get_height() <= col_top - 6 else max_w
+                      for w, y, k in zip(widths, lay.line_y, ("title", "artist", "album"))]
+        if lay.text is None or lay.text_w != widths:
+            lay.text_w = widths
             lay.text = []
-            for key, colour in (("title", WHITE), ("artist", GREY), ("album", DIM)):
+            for (key, colour), w in zip((("title", WHITE), ("artist", GREY), ("album", DIM)), widths):
                 t = self.info.get(key) or ""
                 f = lay.fonts[key]
-                lay.text.append(f.render(fit(f, t, max_w), True, colour) if t else None)
+                lay.text.append(f.render(fit(f, t, w), True, colour) if t else None)
         for surf, y in zip(lay.text, lay.line_y):
             if surf:
                 s.blit(surf, (MARGIN, y))
-
         p = self.position()
         if p:
             pos, length = p
@@ -303,7 +308,7 @@ class Overlay:
         if show_small:
             r = lay.small_art.get_rect(center=(lay.rect.w - MARGIN - lay.art // 2, lay.art_top + lay.art // 2))
             s.blit(lay.small_art, r)
-        y = lay.art_top
+        y = col_top if extras else 0
         for e in extras:
             s.blit(e, (col_right - e.get_width(), y))
             y += e.get_height() + 10
