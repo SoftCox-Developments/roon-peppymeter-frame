@@ -35,8 +35,8 @@ Commands:
 
 Three kinds of visualiser are listed:
   Hi-fi displays    hifi/Oscilloscope (the waveform), hifi/Goniometer (the stereo image,
-                    with a phase meter), the two side by side, and hifi/Waterfall
-                    (the spectrum scrolling by).
+                    with a phase meter), hifi/GOS (goniometer, oscilloscope and a
+                    spectrum together) and hifi/Waterfall (the spectrum scrolling by).
                     Above the strip, or the whole screen with 'vis strip off'.
   Spectrum bars     folders ending in -rpf-spectrum: bars above the now-playing strip.
   Meter + spectrum  Gelo5's combined designs (names with S+M or Spectrum): needles and
@@ -84,7 +84,7 @@ load() {
     done
     # hi-fi displays, drawn from the audio itself by vis_hifi_display.py
     if [ -f "$P/vis_hifi_display.py" ]; then
-        all+=("hifi/Oscilloscope" "hifi/Goniometer" "hifi/Goniometer + Oscilloscope" "hifi/Waterfall")
+        all+=("hifi/Oscilloscope" "hifi/Goniometer" "hifi/GOS" "hifi/Waterfall")
     fi
     # meter + spectrum skins (Gelo5's combined designs), one folder per pack
     for m in "$P"/vis_hybrid/*/templates/*/meters.txt; do

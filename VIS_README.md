@@ -70,13 +70,13 @@ of its bars, so for bars with a strip use the `1920x720` version of the same loo
 
 ## Hi-fi displays
 
-Three displays drawn from the audio itself (`vis_hifi_display.py`), listed as `hifi/...`:
+Four displays drawn from the audio itself (`vis_hifi_display.py`), listed as `hifi/...`:
 
 | Display | What it shows |
 |---------|---------------|
 | `hifi/Oscilloscope` | the waveform of the left and right channels |
 | `hifi/Goniometer` | the stereo image: mono is a vertical line, wide stereo fills out, out-of-phase sound lies sideways; the PHASE meter beside it reads +1 for mono, 0 for unrelated channels, below 0 for out of phase |
-| `hifi/Goniometer + Oscilloscope` | the two side by side |
+| `hifi/GOS` | Goniometer, Oscilloscope and Spectrum on one screen: the goniometer on the left, the two scope traces top right, and below them a 24-bar spectrum coloured like a level meter (green, yellow from -5 dB, orange from -3 dB, red from 0 dB) with falling peak markers |
 | `hifi/Waterfall` | the spectrum scrolling right to left: pitch from bottom to top, brightness is loudness |
 
 They sit above the now-playing strip; `vis strip off` gives them the whole screen. Nothing

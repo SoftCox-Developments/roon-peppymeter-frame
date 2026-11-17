@@ -7,13 +7,13 @@
 # This program is free software: you can redistribute it and/or modify it under the terms of
 # the GNU General Public License as published by the Free Software Foundation, either
 # version 3 of the License, or (at your option) any later version. See LICENSE.
-"""Three displays that are direct pictures of the sound, drawn from the audio itself:
+"""Four displays that are direct pictures of the sound, drawn from the audio itself:
 
   hifi/Oscilloscope   the waveform of the left and right channels, as on a scope
   hifi/Goniometer     the stereo image (vectorscope): mono is a vertical line, wide stereo
                       fills out, out-of-phase sound lies sideways; with a phase meter
-  hifi/Goniometer + Oscilloscope   the goniometer beside the two scope traces and a
-                      24-bar spectrum coloured like a level meter
+  hifi/GOS            Goniometer, Oscilloscope and Spectrum together: the goniometer beside
+                      the two scope traces and a 24-bar spectrum coloured like a level meter
   hifi/Waterfall      the spectrum scrolling by: time runs right to left, pitch bottom to
                       top, brightness is loudness - notes, tunes and drum hits become shapes
 
@@ -37,7 +37,8 @@ import numpy as np
 import pygame
 from pygame.time import Clock
 
-NAMES = ("Oscilloscope", "Goniometer", "Goniometer + Oscilloscope", "Waterfall")
+NAMES = ("Oscilloscope", "Goniometer", "GOS", "Waterfall")
+OLD_NAMES = {"Goniometer + Oscilloscope": "GOS"}       # what GOS was called while 2.2 was in the making
 V = vis_settings.load()
 FPS = max(5, V.getint("display_fps"))
 RATE = 44100
@@ -226,7 +227,8 @@ class Goniometer:
 
 class SpectrumBars:
     """A mono spectrum of 24 bars, coloured like a level meter: green deepening to light
-    below -3 dB, yellow from -3 to 0 dB, red above. 0 dB is the level that fills a bar in
+    below -5 dB, yellow from -5, orange from -3, red from 0 dB. Each bar has a peak marker
+    that falls slowly and keeps the colour of the peak it marks. 0 dB is the level that fills a bar in
     the spectrum visualisers (db_top in the settings); the scale runs 3 dB past it."""
 
     BARS = 24
@@ -241,6 +243,7 @@ class SpectrumBars:
         self.n = self.bands.n
         self.levels = np.zeros(self.BARS)
         self.peaks = np.zeros(self.BARS)                # falling peak markers, as on the spectrum skins
+        self.peak_rows = [0] * self.BARS                # the row of the colour column each peak was set at
         self.peak_fall = 8.6 / FPS                      # the same speed: 8.6% of the height a second
         self.attack = min(1.0, max(0.05, V.getfloat("attack")))
         self.fall = 100.0 / (max(0.05, V.getfloat("fall_time")) * FPS)
@@ -251,23 +254,25 @@ class SpectrumBars:
         pitch = (area.w - left - 16) // self.BARS
         self.bar_w = pitch - max(2, pitch // 5)
         self.xs = [area.x + left + i * pitch for i in range(self.BARS)]
-        f3, f0 = (span - 3.0) / (span + self.OVER), span / (span + self.OVER)
+        f5, f3, f0 = [(span + db) / (span + self.OVER) for db in (-5.0, -3.0, 0.0)]
         self.column = pygame.Surface((self.bar_w, h))
         for y in range(h):
             frac = 1.0 - y / h
             if frac >= f0:
                 c = (255, 50, 30)
             elif frac >= f3:
-                c = (255, 220, 0)
+                c = (255, 140, 0)
+            elif frac >= f5:
+                c = (255, 225, 0)
             else:
-                t = frac / f3
+                t = frac / f5
                 c = (int(150 * t * t), int(95 + 160 * t), int(45 + 105 * t))
             pygame.draw.line(self.column, c, (0, y), (self.bar_w, y))
         self.ticks = []
-        for db in (0, -3, -10, -20, -30, -40):
+        for db in (0, -3, -5, -10, -20, -30, -40):
             frac = (span + db) / (span + self.OVER)
-            if frac > 0.02:
-                label = f.render(f"{db}", True, LABEL)
+            if frac > 0.02:             # -3 keeps its line but has no room for a number beside -5
+                label = f.render(f"{db}", True, LABEL) if db != -3 else None
                 self.ticks.append((self.base - int(h * frac), label))
         self.freqs = []
         centres = np.sqrt(self.bands.edges[:-1] * self.bands.edges[1:])
@@ -287,18 +292,24 @@ class SpectrumBars:
         s.fill(BLACK, a)
         for y, label in self.ticks:
             pygame.draw.line(s, GRID, (self.xs[0] - 8, y), (a.right - 12, y))
-            s.blit(label, (self.xs[0] - 14 - label.get_width(), y - label.get_height() // 2))
+            if label:
+                s.blit(label, (self.xs[0] - 14 - label.get_width(), y - label.get_height() // 2))
         s.blit(self.db, (a.x + 6, self.base + 6))
         for x, label in self.freqs:
             s.blit(label, (x, self.base + 6))
-        self.peaks = np.maximum(self.levels, self.peaks - self.peak_fall)
-        for x, level, peak in zip(self.xs, self.levels, self.peaks):
+        fallen = self.peaks - self.peak_fall
+        for i, (x, level) in enumerate(zip(self.xs, self.levels)):
             hh = int(self.h * level / 100.0)
             if hh > 0:
                 s.blit(self.column, (x, self.base - hh), (0, self.h - hh, self.bar_w, hh))
-            ph = min(self.h - 4, int(self.h * peak / 100.0) + 3)
-            if ph > 6:          # a 4 px marker in the colour of the zone it is in
-                s.blit(self.column, (x, self.base - ph - 4), (0, self.h - ph - 4, self.bar_w, 4))
+            if level >= fallen[i]:          # the bar has pushed the marker up: a new peak, a new colour
+                self.peaks[i] = level
+                self.peak_rows[i] = max(0, self.h - hh - 4)
+            else:
+                self.peaks[i] = fallen[i]
+            ph = min(self.h - 4, int(self.h * self.peaks[i] / 100.0) + 3)
+            if ph > 6:          # a 4 px marker, in the colour of the peak it marks all the way down
+                s.blit(self.column, (x, self.base - ph - 4), (0, self.peak_rows[i], self.bar_w, 4))
         return [a]
 
 
@@ -377,6 +388,7 @@ def main():
     if len(sys.argv) == 4 and sys.argv[1] == "--snapshot":
         snapshot = (sys.argv[2], float(sys.argv[3]))
     folder, name = vsd.current_skin()
+    name = OLD_NAMES.get(name, name)
     if folder != "hifi" or name not in NAMES:
         vsd.die(f"'{folder}/{name}' is not a hi-fi display ({', '.join(NAMES)})")
 
@@ -394,7 +406,7 @@ def main():
     if mode != "off":
         overlay.capture_background(mode)
     audio = Audio()
-    display = {"Oscilloscope": Oscilloscope, "Goniometer": Goniometer, "Goniometer + Oscilloscope": Combined,
+    display = {"Oscilloscope": Oscilloscope, "Goniometer": Goniometer, "GOS": Combined,
                "Waterfall": Waterfall}[name](screen, area)
     print(f"Hi-fi display '{name}': area {tuple(area)}, strip {mode}, {FPS} fps", flush=True)
     pygame.display.update(full)
