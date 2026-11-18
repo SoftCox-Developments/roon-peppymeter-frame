@@ -28,8 +28,7 @@ FONT_DIR = os.path.join(BASE_DIR, "vis_fonts")            # the digital-clock fo
 
 # One FIFO per bar count: the display creates /tmp/rpf_spectrum_<bars> and reads it;
 # the audio hub finds it by name and sends frames of that many bars. No other coordination.
-PCM_PIPE = "/tmp/rpf_pcm"                                 # raw audio (S16 stereo) for projectM, on request
-PROJECTM_DIR = os.path.join(BASE_DIR, "vis_projectm")     # projectM library and presets (trial)
+PCM_PIPE = "/tmp/rpf_pcm"                                 # raw audio (S16 stereo) for the hi-fi displays, on request
 SPECTRUM_PIPE_PREFIX = "/tmp/rpf_spectrum_"
 DEFAULT_BARS = 20
 MAX_BARS = 128

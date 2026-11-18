@@ -1,6 +1,6 @@
 # Roon PeppyMeter Frame
 
-Classic VU meters, or a spectrum analyser, on a TV or monitor, driven by whatever Roon is playing, with the track, artist, album, progress and cover art shown alongside, and the album art filling the screen when you pause.
+Classic VU meters, a spectrum analyser or hi-fi test-bench displays, on a TV or monitor, driven by whatever Roon is playing, with the track, artist, album, progress and cover art shown alongside, and the album art filling the screen when you pause.
 
 It runs on a Raspberry Pi 4 behind the screen. The needles move with the **actual analogue output of your DAC**, so they show exactly what you hear, whatever the source and whatever DSP, upsampling or HQPlayer processing sits in between. The track details come from Roon through a small Roon extension.
 
@@ -20,6 +20,8 @@ It runs on a Raspberry Pi 4 behind the screen. The needles move with the **actua
 - **Dozens of meter designs** from the PeppyMeter skin collection by Gelo5 and balbuze, at 1920x1080, 1920x720, 1920x515 and 1920x480. The strip fits itself to each one: under the shorter designs it uses the free space and grows to suit.
 - **The `meter` command** to choose a design by number, step through them, pick at random, run a slideshow, hide the ones you don't like, nudge a design up or down, and darken the strip behind the text.
 - **Spectrum analyser** (optional): the `vis` command swaps the meters for dancing frequency bars, built on [PeppySpectrum](https://github.com/project-owner/PeppySpectrum), with the same strip and paused screen. `meter` swaps back.
+- **Hi-fi displays** (optional, new in 2.2): an oscilloscope, a goniometer with a phase meter, a scrolling waterfall, and GOS: goniometer, oscilloscope and a level-meter spectrum on one screen.
+- **Format badge** (optional): a small picture and text of your choice beside the cover art, for example your upsampler's logo and what your DAC is being sent.
 - **Starts by itself** at power-on and finds your Roon Core automatically.
 - Everything that changes all the time lives in memory, not on the SD card.
 
@@ -148,9 +150,9 @@ A few tips:
 - Some lower-resolution duplicates and the linear "fluo" designs are hidden by default. `meter unhide` lists them.
 - The list of design folders is in `meter_folders.txt`. Other 1920-wide folders from the skin collection can be added there.
 
-## Spectrum visualisers: the `vis` command
+## Visualisers: the `vis` command
 
-An optional extra, new in version 2. It shows a spectrum analyser in place of the meters, with the same now-playing strip and paused screen. Install it from this folder once the meters are working:
+An optional extra, new in version 2. It shows a spectrum analyser or a hi-fi display in place of the meters, with the same now-playing strip and paused screen. Install it from this folder once the meters are working:
 
 ```
 bash vis_install.sh
@@ -168,11 +170,12 @@ vis --help            everything else
 ```
 
 - Seven looks come with it, from 20 wide bars to 96 fine ones, some with falling peak markers.
+- **Hi-fi displays** (new in 2.2): `hifi/Oscilloscope`, `hifi/Goniometer`, `hifi/GOS` and `hifi/Waterfall`, drawn from the audio itself.
 - **Meter + spectrum designs** (new in 2.1): twenty of Gelo5's full-screen designs with needles and a spectrum together, and the cover art, title and time built into the design. They are in the same `vis` list.
 - Full-screen versions with no strip are hidden to begin with. `vis unhide` lists them.
-- The list is long: 27 entries once the meter + spectrum designs are in. Hide the ones you don't use with `vis hide N` so that `vis next` and `vis random` only visit your favourites. Nothing is deleted, and `vis unhide` brings them back.
+- The list is long: 31 entries once the meter + spectrum designs are in. Hide the ones you don't use with `vis hide N` so that `vis next` and `vis random` only visit your favourites. Nothing is deleted, and `vis unhide` brings them back.
 - After a restart of the Pi the meters come back. `vis 1` returns to the bars.
-- It uses a little more of the Pi's processor than the meters do (measured: under half of one core in all).
+- It uses more of the Pi's processor than the meters do (measured: under half of one core for the spectra, about four fifths of one core for GOS, the busiest). The Pi 4 has four.
 
 Settings, how to make your own looks, and what the installer changes are in [VIS_README.md](VIS_README.md). `bash vis_uninstall.sh` removes it and leaves the meters as they were.
 

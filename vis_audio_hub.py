@@ -223,7 +223,7 @@ class SpectrumFeed:
 
 
 class PcmFeed:
-    """The audio itself (16-bit stereo, as captured) for a display that wants it - projectM.
+    """The audio itself (16-bit stereo, as captured) for a display that wants it - the hi-fi displays.
     Written to the FIFO /tmp/rpf_pcm while something is reading it; otherwise nothing is done
     beyond one attempt a second to open it."""
 

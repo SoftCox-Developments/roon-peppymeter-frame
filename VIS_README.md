@@ -80,7 +80,16 @@ Four displays drawn from the audio itself (`vis_hifi_display.py`), listed as `hi
 | `hifi/Waterfall` | the spectrum scrolling right to left: pitch from bottom to top, brightness is loudness |
 
 They sit above the now-playing strip; `vis strip off` gives them the whole screen. Nothing
-adjusts itself to the music: a quiet recording looks quiet.
+adjusts itself to the music: a quiet recording looks quiet. If the traces or the GOS
+spectrum sit too low or too high on your music, change `hifi_gain_db` (see Settings).
+
+## Format badge in the strip
+
+New in 2.2. When `format_image` or `format_text` is set in `settings.conf` (see Settings), the
+now-playing strip shows the picture with the text centred under it, level with the
+bottom of the cover art. This applies to every display with a strip, the meters
+included. The title and artist above it keep the full width. Leave both unset for no
+badge.
 
 ## Meter + spectrum designs
 
@@ -130,8 +139,8 @@ Optional. Add a `[vis]` section to `settings.conf`; the defaults are:
     gain_db = 0                # raise or lower all bars
     attack = 0.7               # 0-1, how fast bars rise
     fall_time = 0.5            # seconds for a full bar to fall
-    format_image =             # meter + spectrum designs: picture for the format badge box
-    format_text =              # meter + spectrum designs: text for the resolution box
+    format_image =             # format badge picture: in the strip, and in the meter + spectrum designs' badge box
+    format_text =              # format text: under the badge in the strip, and in the designs' resolution box
     time_display = remaining   # meter + spectrum designs: remaining or elapsed
     hifi_gain_db = 0           # hi-fi displays: enlarge (+) or shrink (-) the picture of the signal
     scope_ms = 20              # oscilloscope: milliseconds of sound across the screen
