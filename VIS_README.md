@@ -68,6 +68,33 @@ Skins in the `1920x1080` folder fill the whole screen with bars and have no stri
 start hidden: `vis unhide` lists them. Turning the strip on over one covers the bottom
 of its bars, so for bars with a strip use the `1920x720` version of the same look.
 
+## Hi-fi displays
+
+Four displays drawn from the audio itself (`vis_hifi_display.py`), listed as `hifi/...`:
+
+| Display | What it shows |
+|---------|---------------|
+| `hifi/Oscilloscope` | the waveform of the left and right channels |
+| `hifi/Goniometer` | the stereo image: mono is a vertical line, wide stereo fills out, out-of-phase sound lies sideways; the PHASE meter beside it reads +1 for mono, 0 for unrelated channels, below 0 for out of phase |
+| `hifi/GOS` | Goniometer, Oscilloscope and Spectrum on one screen: the goniometer on the left, the two scope traces top right, and below them a 24-bar spectrum coloured like a level meter (green, yellow from -5 dB, orange from -3 dB, red from 0 dB) with falling peak markers |
+| `hifi/Waterfall` | the spectrum scrolling right to left: pitch from bottom to top, brightness is loudness |
+
+They sit above the now-playing strip; `vis strip off` gives them the whole screen. Nothing
+adjusts itself to the music: a quiet recording looks quiet. If the traces or the GOS
+spectrum sit too low or too high on your music, change `hifi_gain_db` (see Settings).
+
+## Format badge in the strip
+
+New in 2.2. When `format_image` or `format_text` is set in `settings.conf` (see Settings), the
+now-playing strip shows the picture with the text centred under it, level with the
+bottom of the cover art. This applies to every display with a strip, the meters
+included. The title and artist above it keep the full width. Leave both unset for no
+badge.
+
+The picture is your own choice and stays on your Pi; nothing is downloaded or included.
+If you use a product's logo (the README photo shows the HQPlayer logo, a trademark of
+Signalyst), it remains its owner's trademark.
+
 ## Meter + spectrum designs
 
 Twenty full-screen designs by Gelo5, made for the PeppyMeter screensaver plugin for
@@ -116,9 +143,13 @@ Optional. Add a `[vis]` section to `settings.conf`; the defaults are:
     gain_db = 0                # raise or lower all bars
     attack = 0.7               # 0-1, how fast bars rise
     fall_time = 0.5            # seconds for a full bar to fall
-    format_image =             # meter + spectrum designs: picture for the format badge box
-    format_text =              # meter + spectrum designs: text for the resolution box
+    format_image =             # format badge picture: in the strip, and in the meter + spectrum designs' badge box
+    format_text =              # format text: under the badge in the strip, and in the designs' resolution box
     time_display = remaining   # meter + spectrum designs: remaining or elapsed
+    hifi_gain_db = 0           # hi-fi displays: enlarge (+) or shrink (-) the picture of the signal
+    scope_ms = 20              # oscilloscope: milliseconds of sound across the screen
+    gonio_decay = 0.86         # goniometer: how much glow survives each frame (0.3 - 0.98)
+    waterfall_seconds = 12     # waterfall: seconds of sound across the screen
 
 After a change: `sudo systemctl restart rpf-audio` (and `vis N` again for display_fps).
 If the bars sit too low or hit the top on your music, change `gain_db` first.

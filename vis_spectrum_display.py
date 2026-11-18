@@ -54,7 +54,7 @@ def current_skin():
     try:
         with open(vis_settings.CURRENT_FILE, encoding="utf-8") as f:
             folder, _, name = f.readline().strip().partition("/")
-        if folder and name and (name in sections(folder) or vis_settings.hybrid_pack(folder)):
+        if folder and name and (folder == "hifi" or name in sections(folder) or vis_settings.hybrid_pack(folder)):
             return folder, name
     except OSError:
         pass
@@ -154,6 +154,9 @@ def main():
     if not os.path.isfile(os.path.join(vis_settings.SPECTRUM_DIR, "spectrum.py")):
         die(f"PeppySpectrum not found in {vis_settings.SPECTRUM_DIR}. Run: bash vis_install.sh")
     folder, name = current_skin()
+    if folder == "hifi":
+        # Oscilloscope, goniometer, waterfall: that is vis_hifi_display.py's job
+        os.execv(sys.executable, [sys.executable, os.path.join(HERE, "vis_hifi_display.py")] + sys.argv[1:])
     if vis_settings.hybrid_pack(folder):
         # A meter + spectrum skin: that is vis_hybrid_display.py's job
         os.execv(sys.executable, [sys.executable, os.path.join(HERE, "vis_hybrid_display.py")] + sys.argv[1:])

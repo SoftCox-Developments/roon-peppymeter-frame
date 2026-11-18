@@ -18,6 +18,7 @@ program that opens the capture device. Feeds:
   spectrum  frames of N little-endian uint32 values 0..100, one per frequency bar, in the
             format PeppySpectrum expects from peppyalsa. Sent to every FIFO named
             /tmp/rpf_spectrum_<N> that has a reader; nothing is computed when none has.
+  audio     the captured audio itself (16-bit stereo) to /tmp/rpf_pcm while it has a reader.
 
 Spectrum maths: mono mix, Hann window, FFT, power summed into N log-spaced bands between
 freq_low and freq_high, expressed in dB relative to a full-scale sine and normalised to
@@ -221,6 +222,43 @@ class SpectrumFeed:
                 del self.readers[path]
 
 
+class PcmFeed:
+    """The audio itself (16-bit stereo, as captured) for a display that wants it - the hi-fi displays.
+    Written to the FIFO /tmp/rpf_pcm while something is reading it; otherwise nothing is done
+    beyond one attempt a second to open it."""
+
+    def __init__(self):
+        self.path = vis_settings.PCM_PIPE
+        self.fd = None
+        self.next_try = 0.0
+        try:
+            if os.path.exists(self.path) and not stat.S_ISFIFO(os.stat(self.path).st_mode):
+                os.remove(self.path)
+            if not os.path.exists(self.path):
+                os.mkfifo(self.path, 0o666)
+        except OSError as e:
+            log.warning("Could not create %s: %s", self.path, e)
+
+    def add(self, data):
+        if self.fd is None:
+            now = time.monotonic()
+            if now < self.next_try:
+                return
+            self.next_try = now + 1.0
+            self.fd = open_writer(self.path)
+            if self.fd is None:
+                return
+            log.info("Audio reader connected (%s)", self.path)
+        try:
+            os.write(self.fd, data)
+        except BlockingIOError:
+            pass    # reader is behind: drop this block rather than fall behind
+        except BrokenPipeError:
+            log.info("Audio reader disconnected")
+            os.close(self.fd)
+            self.fd = None
+
+
 def open_capture():
     """Open the capture device in blocking mode, so reads sleep until audio arrives."""
     import alsaaudio
@@ -250,6 +288,7 @@ def main():
 
     peaks = PeakFeed()
     spectrum = SpectrumFeed()
+    pcm_feed = PcmFeed()
     pcm = open_capture()
     log.info("Audio hub (visualiser extension): capturing from %s at %d Hz; %d peak updates/s to %s; "
              "spectrum %d frames/s (analysed %d times/s) on request",
@@ -265,6 +304,7 @@ def main():
         samples = np.frombuffer(data, dtype=np.int16).astype(np.int32)   # int32: abs(-32768) fits
         peaks.add(samples, length)
         spectrum.add(samples, length)
+        pcm_feed.add(data)
 
 
 if __name__ == "__main__":

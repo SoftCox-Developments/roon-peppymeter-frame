@@ -33,7 +33,11 @@ Commands:
   off               Back to the meters (so does any 'meter' switch, e.g. 'meter next')
   -h, --help, help  Show this help
 
-Two kinds of visualiser are listed:
+Three kinds of visualiser are listed:
+  Hi-fi displays    hifi/Oscilloscope (the waveform), hifi/Goniometer (the stereo image,
+                    with a phase meter), hifi/GOS (goniometer, oscilloscope and a
+                    spectrum together) and hifi/Waterfall (the spectrum scrolling by).
+                    Above the strip, or the whole screen with 'vis strip off'.
   Spectrum bars     folders ending in -rpf-spectrum: bars above the now-playing strip.
   Meter + spectrum  Gelo5's combined designs (names with S+M or Spectrum): needles and
                     bars together, with the cover art, title and time placed by the
@@ -78,6 +82,10 @@ load() {
             all+=("$f/$s")
         done < <(tr -d '\r' < "$d/spectrum.txt" | sed -n 's/^\[\(.*\)\][[:space:]]*$/\1/p')
     done
+    # hi-fi displays, drawn from the audio itself by vis_hifi_display.py
+    if [ -f "$P/vis_hifi_display.py" ]; then
+        all+=("hifi/Oscilloscope" "hifi/Goniometer" "hifi/GOS" "hifi/Waterfall")
+    fi
     # meter + spectrum skins (Gelo5's combined designs), one folder per pack
     for m in "$P"/vis_hybrid/*/templates/*/meters.txt; do
         [ -f "$m" ] || continue
@@ -167,7 +175,7 @@ case "$1" in
             echo "$current is a meter + spectrum design with its own places for the track details, so it has no strip."; exit 0
         fi
         now=$(awk -F'\t' -v k="$current" '$1 == k { print $2 }' "$STRIPF")
-        if [ -z "$2" ]; then echo "$current: strip = ${now:-default (on under 720 skins, off over full-screen ones)}"; exit 0; fi
+        if [ -z "$2" ]; then echo "$current: strip = ${now:-default (on under 720 skins and hi-fi displays, off over full-screen skins)}"; exit 0; fi
         case "$2" in clear|dim|black|off) ;; *) echo "Usage: vis strip [clear|dim|black|off]"; exit 1 ;; esac
         awk -F'\t' -v k="$current" '$1 != k' "$STRIPF" > "$STRIPF.tmp"
         printf '%s\t%s\n' "$current" "$2" >> "$STRIPF.tmp"

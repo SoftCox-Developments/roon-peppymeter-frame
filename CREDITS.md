@@ -39,6 +39,10 @@ They are not included in this project. `install.sh` downloads them from that rep
 
 Roon is a trademark of Roon Labs LLC. This project is not affiliated with or endorsed by Roon Labs.
 
+## HQPlayer
+
+The README photo of the GOS display shows the HQPlayer logo as its format badge, indicating the signal HQPlayer is sending to the DAC. HQPlayer and the HQPlayer logo are trademarks of Signalyst. This project is not affiliated with or endorsed by Signalyst. The logo is not included in this project; the format badge is a picture each user supplies.
+
 ## Other open-source software
 
 - [pygame](https://www.pygame.org/) and SDL, for drawing.

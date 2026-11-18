@@ -28,6 +28,7 @@ FONT_DIR = os.path.join(BASE_DIR, "vis_fonts")            # the digital-clock fo
 
 # One FIFO per bar count: the display creates /tmp/rpf_spectrum_<bars> and reads it;
 # the audio hub finds it by name and sends frames of that many bars. No other coordination.
+PCM_PIPE = "/tmp/rpf_pcm"                                 # raw audio (S16 stereo) for the hi-fi displays, on request
 SPECTRUM_PIPE_PREFIX = "/tmp/rpf_spectrum_"
 DEFAULT_BARS = 20
 MAX_BARS = 128
@@ -48,6 +49,10 @@ DEFAULTS = {
     "format_image": "",          # meter + spectrum skins: picture for the format badge box (blank = leave empty)
     "format_text": "",           # meter + spectrum skins: text for the resolution box, e.g. DSD 1024
     "time_display": "remaining", # meter + spectrum skins: time box shows remaining or elapsed time
+    "hifi_gain_db": "0",         # hi-fi displays: enlarge (+) or shrink (-) the picture of the signal
+    "scope_ms": "20",            # oscilloscope: milliseconds of sound across the screen
+    "gonio_decay": "0.86",       # goniometer: how much of the glow survives each frame (0.3 - 0.98)
+    "waterfall_seconds": "12",   # waterfall: seconds of sound across the screen
 }
 
 

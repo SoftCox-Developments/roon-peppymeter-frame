@@ -24,7 +24,7 @@ die()  { printf 'ERROR: %s\n' "$1" >&2; exit 1; }
 for f in rpf_settings.py frame_display.py settings.conf venv/bin/python; do
     [ -e "$f" ] || die "$f not found here. Run this from the Roon PeppyMeter Frame folder, after install.sh."
 done
-for f in vis vis_settings.py vis_audio_hub.py vis_spectrum_display.py vis_hybrid_display.py vis_make_skins.py; do
+for f in vis vis_settings.py vis_audio_hub.py vis_spectrum_display.py vis_hybrid_display.py vis_hifi_display.py vis_make_skins.py; do
     [ -f "$f" ] || die "$f is missing - copy all the vis files into $RPF_DIR first."
 done
 systemctl cat rpf-audio.service >/dev/null 2>&1 || die "rpf-audio.service not found. Run install.sh first."
