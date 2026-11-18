@@ -10,6 +10,8 @@ It runs on a Raspberry Pi 4 behind the screen. The needles move with the **actua
 
 <img src="images/hifi-gos.jpg" width="640" alt="GOS hi-fi display: goniometer, oscilloscope and spectrum, with the now-playing strip and a format badge" />
 
+<sub>The format badge in this photo is the HQPlayer logo, a trademark of Signalyst, shown on the owner's own screen to indicate what is being sent to the DAC. It is not part of this project: the badge is a picture each user supplies.</sub>
+
 <img src="images/meters-luxman-radio.jpg" width="640" alt="Power meters while playing internet radio" />
 
 <img src="images/paused.jpg" width="640" alt="Paused: large cover art" />
@@ -239,3 +241,5 @@ Copyright (C) 2026 Andrew Cox (SoftCox Developments).
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See [LICENSE](LICENSE).
 
 Roon is a trademark of Roon Labs LLC. This project is not affiliated with or endorsed by Roon Labs.
+
+HQPlayer and the HQPlayer logo are trademarks of Signalyst. This project is not affiliated with or endorsed by Signalyst.

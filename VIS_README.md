@@ -91,6 +91,10 @@ bottom of the cover art. This applies to every display with a strip, the meters
 included. The title and artist above it keep the full width. Leave both unset for no
 badge.
 
+The picture is your own choice and stays on your Pi; nothing is downloaded or included.
+If you use a product's logo (the README photo shows the HQPlayer logo, a trademark of
+Signalyst), it remains its owner's trademark.
+
 ## Meter + spectrum designs
 
 Twenty full-screen designs by Gelo5, made for the PeppyMeter screensaver plugin for
