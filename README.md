@@ -8,6 +8,8 @@ It runs on a Raspberry Pi 4 behind the screen. The needles move with the **actua
 
 <img src="images/spectrum-aurora.jpg" width="640" alt="Spectrum analyser with the now-playing strip underneath" />
 
+<img src="images/hifi-gos.jpg" width="640" alt="GOS hi-fi display: goniometer, oscilloscope and spectrum, with the now-playing strip and a format badge" />
+
 <img src="images/meters-luxman-radio.jpg" width="640" alt="Power meters while playing internet radio" />
 
 <img src="images/paused.jpg" width="640" alt="Paused: large cover art" />
