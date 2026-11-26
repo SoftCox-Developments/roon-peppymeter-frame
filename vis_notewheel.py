@@ -10,7 +10,8 @@
 """The note wheel: the harmony of the music, worked out from the sound alone.
 
 The 12 notes sit round the circle of fifths, each lit by how much of it is sounding (a
-chromagram). The chord being played is named beside the wheel, with the key of the last
+chromagram), in five rings by register: bass innermost, then octaves 3, 4 and 5, treble
+outermost. The chord being played is named beside the wheel, with the key of the last
 few seconds and a row of recent chords. Inside the wheel, a trail follows the chord's
 centre: music that stays in one key stays on one side; music that changes key travels.
 
@@ -84,10 +85,14 @@ class Chroma:
         overtones would put on the notes above it is taken off them;
       - noise: only a pitch that stands out from its neighbours counts (a peak), so the
         broadband scrape of a strum or a drum hit lights nothing.
-    The 12 pitch classes are then summed (C2, C3, C4 ... all count as C).
+    The 12 pitch classes are then summed (C2, C3, C4 ... all count as C). The same notes are
+    also kept by register, in self.rings: bass (below C3), octaves 3, 4 and 5, and treble
+    (C6 up), for the wheel's rings.
     """
 
-    LO, HI = 36, 100                                    # C2 .. E7
+    RINGS = 5
+
+    LO, HI = 36, 100                                    # C2 .. E7 (a lower bass note still shows, by its octave)
     OVERTONES = ((12, 0.45), (19, 0.30), (24, 0.20), (28, 0.15), (31, 0.10))   # semitones up, share of power
 
     def __init__(self, peak_db=3.0, full_db=12.0):
@@ -105,6 +110,9 @@ class Chroma:
         self.pc = self.keys % 12
         self.peak_db, self.span_db = peak_db, max(1.0, full_db - peak_db)
         self.weight = 1.0 / np.sqrt(freqs / freqs[0])    # lean a little towards the lower, fundamental notes
+        self.ring = np.clip(self.keys // 12 - 3, 0, self.RINGS - 1)            # MIDI octave - 2: bass, 3, 4, 5, treble
+        self.lift = 10 ** (3.0 / 20 * (self.keys - 60) / 12.0)                  # +3 dB an octave, so treble shows
+        self.rings = np.zeros((self.RINGS, 12))
 
     def __call__(self, mono):
         p = np.zeros(self.k)
@@ -120,7 +128,10 @@ class Chroma:
         db = 10 * np.log10(p + 1e-20)
         around = np.median(np.lib.stride_tricks.sliding_window_view(np.pad(db, 6, mode="edge"), 13), axis=1)
         peak = np.clip((db - around - self.peak_db) / self.span_db, 0.0, 1.0)
-        return np.bincount(self.pc, weights=np.sqrt(p) * peak * self.weight, minlength=12)
+        amp = np.sqrt(p) * peak
+        self.rings = np.zeros((self.RINGS, 12))
+        np.add.at(self.rings, (self.ring, self.pc), amp * self.lift)
+        return np.bincount(self.pc, weights=amp * self.weight, minlength=12)
 
 
 class NoteWheel:
@@ -133,6 +144,7 @@ class NoteWheel:
         self.follow = 1 - math.exp(-1.0 / (FPS * max(0.02, V.getfloat("wheel_smoothing"))))
         self.floor = min(0.9, max(0.0, V.getfloat("wheel_note_floor")))
         self.log = V.get("wheel_log").lower() in ("yes", "on", "true", "1")
+        self.by_register = V.get("wheel_rings").lower() not in ("no", "off", "false", "0")
         self.reset()
         k = area.h / 720.0
         self.k = k
@@ -156,19 +168,22 @@ class NoteWheel:
         small = font(int(28 * k))
         self.captions = [(small.render(t, True, LABEL), y) for t, y in
                          (("chord", 40), ("key, last few seconds", 290), ("recent chords", 480))]
-        self.segments = []
-        for i in range(12):
+        def arc(i, r0, r1):                                 # one segment of the wheel between two radii
             a0, a1 = self.ang[i] - math.radians(14), self.ang[i] + math.radians(14)
-            outer = [(self.cx + self.r_out * math.cos(a0 + (a1 - a0) * j / 8),
-                      self.cy + self.r_out * math.sin(a0 + (a1 - a0) * j / 8)) for j in range(9)]
-            inner = [(self.cx + self.r_in * math.cos(a0 + (a1 - a0) * j / 8),
-                      self.cy + self.r_in * math.sin(a0 + (a1 - a0) * j / 8)) for j in range(8, -1, -1)]
-            self.segments.append(outer + inner)
+            outer = [(self.cx + r1 * math.cos(a0 + (a1 - a0) * j / 8), self.cy + r1 * math.sin(a0 + (a1 - a0) * j / 8)) for j in range(9)]
+            inner = [(self.cx + r0 * math.cos(a0 + (a1 - a0) * j / 8), self.cy + r0 * math.sin(a0 + (a1 - a0) * j / 8)) for j in range(8, -1, -1)]
+            return outer + inner
+        self.segments = [arc(i, self.r_in, self.r_out) for i in range(12)]
+        n = Chroma.RINGS                                    # rings by register: bass innermost, treble outermost
+        dr = (self.r_out - self.r_in) / n
+        self.ring_arcs = [[arc(i, self.r_in + r * dr + (1 if r else 0), self.r_in + (r + 1) * dr) for r in range(n)] for i in range(12)]
         self.chip_cache = {}
 
     def reset(self):
         self.c = np.zeros(12)                           # brightness of each note as drawn, 0..1
         self.shape = np.zeros(12)                       # each note's share, the strongest = 1, smoothed
+        self.cells = np.zeros((Chroma.RINGS, 12))       # the same, by register (bass .. treble)
+        self.lit = np.zeros((Chroma.RINGS, 12))         # brightness of each ring of each note as drawn
         self.slow = np.full(12, 1e-6)
         self.loud = 0.0
         self.trail = []
@@ -199,6 +214,11 @@ class NoteWheel:
         self.shape += (shape - self.shape) * self.follow
         # only notes near the strongest light up: weaker ones stay dark
         self.c = np.clip((self.shape - self.floor) / (1.0 - self.floor), 0.0, 1.0) ** 1.2 * self.loud
+        if self.by_register:
+            rings = self.chroma.rings
+            top = rings.max()
+            self.cells += ((rings / top if top > 0 else rings) - self.cells) * self.follow
+            self.lit = np.clip((self.cells - self.floor) / (1.0 - self.floor), 0.0, 1.0) ** 1.2 * self.loud
         self.slow += (shape * self.loud - self.slow) / self.key_frames
         # the chord, with a little patience so the name doesn't flicker
         best = None
@@ -267,8 +287,11 @@ class NoteWheel:
         s.fill(BLACK, a)
         cx, cy = self.cx, self.cy
         for i, pc in enumerate(FIFTHS):
-            v = float(self.c[pc])
-            pygame.draw.polygon(s, pc_colour(pc, 0.10 + 0.9 * v ** 0.8), self.segments[i])
+            if self.by_register:
+                for r, poly in enumerate(self.ring_arcs[i]):
+                    pygame.draw.polygon(s, pc_colour(pc, 0.10 + 0.9 * float(self.lit[r, pc]) ** 0.8), poly)
+            else:
+                pygame.draw.polygon(s, pc_colour(pc, 0.10 + 0.9 * float(self.c[pc]) ** 0.8), self.segments[i])
             pygame.draw.polygon(s, pc_colour(pc, 0.35, 0.4), self.segments[i], 1)
             lab = self.labels[i]
             d = self.r_out + 34 * k
