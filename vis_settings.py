@@ -53,6 +53,10 @@ DEFAULTS = {
     "scope_ms": "20",            # oscilloscope: milliseconds of sound across the screen
     "gonio_decay": "0.86",       # goniometer: how much of the glow survives each frame (0.3 - 0.98)
     "waterfall_seconds": "12",   # waterfall: seconds of sound across the screen
+    "wheel_trail_seconds": "5",  # note wheel: seconds of harmony the trail inside the wheel shows
+    "wheel_key_seconds": "4",    # note wheel: seconds of music the key is judged over
+    "wheel_chord_match": "0.8",  # note wheel: how closely the notes must fit a chord to name it (0.5 - 0.95)
+    "wheel_log": "no",           # note wheel: yes = write each chord and key change to the journal
 }
 
 

@@ -7,7 +7,7 @@
 # This program is free software: you can redistribute it and/or modify it under the terms of
 # the GNU General Public License as published by the Free Software Foundation, either
 # version 3 of the License, or (at your option) any later version. See LICENSE.
-"""Four displays that are direct pictures of the sound, drawn from the audio itself:
+"""Five displays drawn from the sound, drawn from the audio itself:
 
   hifi/Oscilloscope   the waveform of the left and right channels, as on a scope
   hifi/Goniometer     the stereo image (vectorscope): mono is a vertical line, wide stereo
@@ -16,6 +16,8 @@
                       the two scope traces and a 24-bar spectrum coloured like a level meter
   hifi/Waterfall      the spectrum scrolling by: time runs right to left, pitch bottom to
                       top, brightness is loudness - notes, tunes and drum hits become shapes
+  hifi/Note wheel     the harmony: the 12 notes round the circle of fifths, the chord and key
+                      named beside it (vis_notewheel.py)
 
 They read the audio hub's raw feed (/tmp/rpf_pcm) and share the now-playing strip and the
 paused screen with the other displays. With 'vis strip off' they fill the whole screen.
@@ -37,7 +39,7 @@ import numpy as np
 import pygame
 from pygame.time import Clock
 
-NAMES = ("Oscilloscope", "Goniometer", "GOS", "Waterfall")
+NAMES = ("Oscilloscope", "Goniometer", "GOS", "Waterfall", "Note wheel")
 OLD_NAMES = {"Goniometer + Oscilloscope": "GOS"}       # what GOS was called while 2.2 was in the making
 V = vis_settings.load()
 FPS = max(5, V.getint("display_fps"))
@@ -47,11 +49,19 @@ GRID = (38, 48, 44)
 LABEL = (120, 135, 128)
 
 
-def font(size):
-    try:
-        return pygame.font.Font(FONT, size)
-    except Exception:
-        return pygame.font.Font(None, size)
+def font(size, bold=False):
+    path = FONT.replace("DejaVuSans.ttf", "DejaVuSans-Bold.ttf") if bold else FONT
+    for p in (path, FONT):
+        try:
+            return pygame.font.Font(p, size)
+        except Exception:
+            pass
+    return pygame.font.Font(None, size)
+
+
+def note_wheel(screen, area):
+    import vis_notewheel
+    return vis_notewheel.NoteWheel(screen, area, font)
 
 
 class Audio:
@@ -407,7 +417,7 @@ def main():
         overlay.capture_background(mode)
     audio = Audio()
     display = {"Oscilloscope": Oscilloscope, "Goniometer": Goniometer, "GOS": Combined,
-               "Waterfall": Waterfall}[name](screen, area)
+               "Waterfall": Waterfall, "Note wheel": note_wheel}[name](screen, area)
     print(f"Hi-fi display '{name}': area {tuple(area)}, strip {mode}, {FPS} fps", flush=True)
     pygame.display.update(full)
 
