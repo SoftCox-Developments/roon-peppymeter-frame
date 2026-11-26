@@ -174,9 +174,13 @@ class NoteWheel:
             inner = [(self.cx + r0 * math.cos(a0 + (a1 - a0) * j / 8), self.cy + r0 * math.sin(a0 + (a1 - a0) * j / 8)) for j in range(8, -1, -1)]
             return outer + inner
         self.segments = [arc(i, self.r_in, self.r_out) for i in range(12)]
-        n = Chroma.RINGS                                    # rings by register: bass innermost, treble outermost
-        dr = (self.r_out - self.r_in) / n
-        self.ring_arcs = [[arc(i, self.r_in + r * dr + (1 if r else 0), self.r_in + (r + 1) * dr) for r in range(n)] for i in range(12)]
+        # registers, bass innermost: each segment is drawn as thin slices, their brightness blended
+        # between the registers' centres, so the light grades smoothly from ring to ring
+        n, slices = Chroma.RINGS, 15
+        dr = (self.r_out - self.r_in) / slices
+        self.slice_arcs = [[arc(i, self.r_in + j * dr, self.r_in + (j + 1) * dr + 0.6) for j in range(slices)] for i in range(12)]
+        centres = (np.arange(n) + 0.5) / n
+        self.blend = np.array([np.interp((j + 0.5) / slices, centres, np.eye(n)[r]) for j in range(slices) for r in range(n)]).reshape(slices, n)
         self.chip_cache = {}
 
     def reset(self):
@@ -286,10 +290,14 @@ class NoteWheel:
         s, a, k = self.screen, self.area, self.k
         s.fill(BLACK, a)
         cx, cy = self.cx, self.cy
+        if self.by_register:
+            self.shade = self.blend @ self.lit              # brightness of each slice of each note
         for i, pc in enumerate(FIFTHS):
             if self.by_register:
-                for r, poly in enumerate(self.ring_arcs[i]):
-                    pygame.draw.polygon(s, pc_colour(pc, 0.10 + 0.9 * float(self.lit[r, pc]) ** 0.8), poly)
+                glow = 0.4 * float(self.c[pc])             # the whole note glows dimly; its registers brighter
+                for j, poly in enumerate(self.slice_arcs[i]):
+                    v = max(glow, float(self.shade[j, pc]))
+                    pygame.draw.polygon(s, pc_colour(pc, 0.10 + 0.9 * v ** 0.8), poly)
             else:
                 pygame.draw.polygon(s, pc_colour(pc, 0.10 + 0.9 * float(self.c[pc]) ** 0.8), self.segments[i])
             pygame.draw.polygon(s, pc_colour(pc, 0.35, 0.4), self.segments[i], 1)
