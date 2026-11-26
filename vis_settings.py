@@ -55,6 +55,8 @@ DEFAULTS = {
     "waterfall_seconds": "12",   # waterfall: seconds of sound across the screen
     "wheel_trail_seconds": "5",  # note wheel: seconds of harmony the trail inside the wheel shows
     "wheel_key_seconds": "4",    # note wheel: seconds of music the key is judged over
+    "wheel_note_floor": "0.3",   # note wheel: notes weaker than this share of the strongest stay dark (0 - 0.8)
+    "wheel_smoothing": "0.2",    # note wheel: seconds the lit notes take to follow the music
     "wheel_chord_match": "0.8",  # note wheel: how closely the notes must fit a chord to name it (0.5 - 0.95)
     "wheel_log": "no",           # note wheel: yes = write each chord and key change to the journal
 }

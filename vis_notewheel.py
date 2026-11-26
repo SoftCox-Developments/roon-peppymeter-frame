@@ -74,23 +74,53 @@ def key_of(chroma):
 
 
 class Chroma:
-    """How much of each of the 12 notes is sounding, from one FFT."""
+    """How much of each of the 12 notes is being played, from the sound.
 
-    def __init__(self, n=8192, lo=60.0, hi=4200.0):
-        self.n = n
-        self.window = np.hanning(n).astype(np.float32)
-        f = np.fft.rfftfreq(n, 1.0 / RATE)
-        keep = (f >= lo) & (f <= hi)
-        self.bins = np.nonzero(keep)[0]
-        midi = 69 + 12 * np.log2(f[keep] / 440.0)
-        near = np.round(midi)
-        self.pc = near.astype(int) % 12
-        self.w = (np.cos(np.pi * (midi - near)) ** 2).astype(np.float32)   # full weight at a note's centre
-        self.w /= np.sqrt(f[keep] / lo).astype(np.float32)                 # favour fundamentals over overtones
+    The spectrum is measured on the piano's semitones (C2 to E7): a longer FFT for the low
+    notes, where semitones are close together. Then two clean-ups, so the wheel shows the
+    notes played rather than everything that rings:
+      - overtones: each note also sounds an octave, an octave and a fifth, two octaves and
+        two octaves and a third above; going up from the lowest note, what a note's
+        overtones would put on the notes above it is taken off them;
+      - noise: only a pitch that stands out from its neighbours counts (a peak), so the
+        broadband scrape of a strum or a drum hit lights nothing.
+    The 12 pitch classes are then summed (C2, C3, C4 ... all count as C).
+    """
+
+    LO, HI = 36, 100                                    # C2 .. E7
+    OVERTONES = ((12, 0.45), (19, 0.30), (24, 0.20), (28, 0.15), (31, 0.10))   # semitones up, share of power
+
+    def __init__(self, peak_db=3.0, full_db=12.0):
+        self.keys = np.arange(self.LO, self.HI + 1)
+        self.k = len(self.keys)
+        freqs = 440.0 * 2 ** ((self.keys - 69) / 12.0)
+        self.parts = []
+        for n, sel in ((16384, self.keys < 52), (8192, self.keys >= 52)):
+            f = np.fft.rfftfreq(n, 1.0 / RATE)
+            idx = []
+            for fk in freqs[sel]:
+                b = np.nonzero((f >= fk * 2 ** (-0.5 / 12)) & (f < fk * 2 ** (0.5 / 12)))[0]
+                idx.append(b if len(b) else np.array([int(round(fk / (RATE / n)))]))
+            self.parts.append((n, np.hanning(n).astype(np.float32), np.nonzero(sel)[0], idx))
+        self.pc = self.keys % 12
+        self.peak_db, self.span_db = peak_db, max(1.0, full_db - peak_db)
+        self.weight = 1.0 / np.sqrt(freqs / freqs[0])    # lean a little towards the lower, fundamental notes
 
     def __call__(self, mono):
-        spec = np.abs(np.fft.rfft(mono[-self.n:] * self.window))[self.bins]
-        return np.sqrt(np.bincount(self.pc, weights=self.w * spec * spec, minlength=12))
+        p = np.zeros(self.k)
+        for n, win, which, idx in self.parts:
+            spec = np.abs(np.fft.rfft(mono[-n:] * win)) ** 2 / (n * n)
+            for j, b in zip(which, idx):
+                p[j] = spec[b].max()
+        for j in range(self.k):                          # take away the overtones of lower notes
+            if p[j] > 0:
+                for off, share in self.OVERTONES:
+                    if j + off < self.k:
+                        p[j + off] = max(0.0, p[j + off] - share * p[j])
+        db = 10 * np.log10(p + 1e-20)
+        around = np.median(np.lib.stride_tricks.sliding_window_view(np.pad(db, 6, mode="edge"), 13), axis=1)
+        peak = np.clip((db - around - self.peak_db) / self.span_db, 0.0, 1.0)
+        return np.bincount(self.pc, weights=np.sqrt(p) * peak * self.weight, minlength=12)
 
 
 class NoteWheel:
@@ -100,6 +130,8 @@ class NoteWheel:
         self.trail_len = max(1, int(V.getfloat("wheel_trail_seconds") * FPS))
         self.key_frames = max(1.0, V.getfloat("wheel_key_seconds") * FPS)
         self.match = V.getfloat("wheel_chord_match")
+        self.follow = 1 - math.exp(-1.0 / (FPS * max(0.02, V.getfloat("wheel_smoothing"))))
+        self.floor = min(0.9, max(0.0, V.getfloat("wheel_note_floor")))
         self.log = V.get("wheel_log").lower() in ("yes", "on", "true", "1")
         self.reset()
         k = area.h / 720.0
@@ -135,7 +167,8 @@ class NoteWheel:
         self.chip_cache = {}
 
     def reset(self):
-        self.c = np.zeros(12)
+        self.c = np.zeros(12)                           # brightness of each note as drawn, 0..1
+        self.shape = np.zeros(12)                       # each note's share, the strongest = 1, smoothed
         self.slow = np.full(12, 1e-6)
         self.loud = 0.0
         self.trail = []
@@ -162,13 +195,15 @@ class NoteWheel:
         rms = math.sqrt(float(np.mean(mono[-4096:] ** 2)) + 1e-9) / 32768.0
         loud = min(1.0, max(0.0, (20 * math.log10(rms + 1e-12) + 54.0) / 42.0))   # -54 .. -12 dB
         self.loud += (loud - self.loud) * 0.3
-        shape = raw / (raw.max() + 1e-9)
-        self.c += (shape * self.loud - self.c) * 0.35
+        shape = raw / (raw.max() + 1e-9) if raw.max() > 0 else raw
+        self.shape += (shape - self.shape) * self.follow
+        # only notes near the strongest light up: weaker ones stay dark
+        self.c = np.clip((self.shape - self.floor) / (1.0 - self.floor), 0.0, 1.0) ** 1.2 * self.loud
         self.slow += (shape * self.loud - self.slow) / self.key_frames
         # the chord, with a little patience so the name doesn't flicker
         best = None
         if self.loud > 0.1:
-            v = self.c / (np.linalg.norm(self.c) + 1e-9)
+            v = self.shape / (np.linalg.norm(self.shape) + 1e-9)
             scores = TPL @ v
             i = int(np.argmax(scores))
             if scores[i] > self.match:
